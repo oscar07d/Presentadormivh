@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Presentador con Firebase (Compat)</title>
+
+  <!-- =========================
+       Estilos generales
+     ========================= -->
+  <style>
+    /* ===== Modal de Login ===== */
+    .login-modal {
+      position: fixed;
+      top: 0; left: 0; right: 0; bottom: 0;
+      background-color: rgba(0, 0, 0, 0.8);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 10000;
+    }
+    .login-box {
+      background: #fff;
+      padding: 20px;
+      border-radius: 5px;
+      text-align: center;
+      width: 300px;
+    }
+    .login-box input {
+      width: 90%;
+      padding: 8px;
+      margin: 10px 0;
+    }
+    .login-box button {
+      padding: 10px 20px;
+      font-size: 1em;
+    }
+    #errorMessage {
+      color: red;
+      display: none;
+      margin-top: 10px;
+    }
+
+    /* ===== Diseño general ===== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+    body {
+      height: 100vh;
+      overflow: hidden;
+      background: #000;
+      font-family: Arial, sans-serif;
+    }
+    /* Ocultamos el contenido principal antes del login */
+    #mainContent {
+      display: none;
+    }
+
+    /* ===== Contenedor multimedia (fondo) ===== */
+    #mediaContainer {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+    }
+    .media-content {
+      object-fit: cover;
+      width: 100%; height: 100%;
+      position: absolute; top: 0; left: 0;
+      opacity: 0; transition: opacity 0.5s ease;
+    }
+    .media-content.active {
+      opacity: 1;
+    }
+    /* Ocultamos la info del archivo (si no la usas) */
+    .song-info {
+      display: none;
+    }
+    /* ===== Texto principal (lyrics) ===== */
+    .lyrics {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%; text-align: center;
+      color: #fff; font-size: 3.5vw;
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
+      opacity: 1; transition: opacity 0.5s ease;
+      line-height: 1.4;
+    }
+    .lyrics.hidden {
+      opacity: 0 !important;
+    }
+
+    /* ===== Barra de búsqueda (oculta por defecto) ===== */
+    #search-container {
+      display: none;
+      position: fixed; top: 10px; left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      padding: 10px; border-radius: 5px;
+      z-index: 300; color: #fff;
+      width: 320px; font-family: Arial, sans-serif;
+    }
+    #search-container input {
+      width: 100%; padding: 5px; font-size: 1em;
+    }
+    #searchResults {
+      max-height: 200px; overflow-y: auto; margin-top: 10px;
+      font-size: 0.9em;
+    }
+    #searchResults div {
+      cursor: pointer; padding: 2px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    #searchResults div:hover {
+      background: rgba(255,255,255,0.1);
+    }
+  </style>
+
+  <!-- =========================
+       Firebase "compat" SDKs
+     ========================= -->
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/9.22.1/firebase-auth-compat.js"></script>
+
+  <script>
+    /* =========================
+       Configuración de Firebase
+       ========================= */
+    const firebaseConfig = {
+      apiKey: "TU_API_KEY",
+      authDomain: "TU_PROJECT_ID.firebaseapp.com",
+      projectId: "TU_PROJECT_ID",
+      storageBucket: "TU_PROJECT_ID.appspot.com",
+      messagingSenderId: "TU_SENDER_ID",
+      appId: "TU_APP_ID",
+      measurementId: "TU_MEASUREMENT_ID" // Opcional
+    };
+    // Inicializamos Firebase
+    firebase.initializeApp(firebaseConfig);
+  </script>
+</head>
+<body>
+  <!-- =========================
+       MODAL DE LOGIN
+       ========================= -->
+  <div id="loginModal" class="login-modal">
+    <div class="login-box">
+      <h2>Acceso Restringido</h2>
+      <input type="email" id="email" placeholder="Correo electrónico" />
+      <input type="password" id="password" placeholder="Contraseña" />
+      <button onclick="login()">Entrar</button>
+      <p id="errorMessage">Credenciales incorrectas</p>
+    </div>
+  </div>
+
+  <!-- =========================
+       CONTENIDO PRINCIPAL
+       ========================= -->
+  <div id="mainContent">
+    <!-- Inputs ocultos para cargar archivos -->
+    <input type="file" id="rtfFile" accept=".rtf, .txt" style="position:absolute; left:-9999px;" />
+    <input type="file" id="mediaFile" accept="video/*,image/*" style="position:absolute; left:-9999px;" />
+    <input type="color" id="colorPicker" style="position:absolute; left:-9999px;" />
+
+    <div id="mediaContainer">
+      <!-- Video e imagen de fondo -->
+      <video id="bgVideo" class="media-content" autoplay muted loop></video>
+      <img id="bgImage" class="media-content" alt="Background" />
+    </div>
+    <div class="song-info"></div>
+    <div class="lyrics"></div>
+
+    <!-- Barra de búsqueda (oculta por defecto, se activa con Ctrl+Shift+X si no estás en modo presentador) -->
+    <div id="search-container">
+      <input type="text" id="searchInput" placeholder="Buscar canciones, versículos, media..." />
+      <div id="searchResults"></div>
+    </div>
+
+    <script>
+      /* =========================
+         LÓGICA DE LOGIN
+         ========================= */
+      function login() {
+        const email = document.getElementById('email').value;
+        const password = document.getElementById('password').value;
+        firebase.auth().signInWithEmailAndPassword(email, password)
+          .then(() => {
+            // Login exitoso: ocultar el modal y mostrar el contenido
+            document.getElementById('loginModal').style.display = 'none';
+            document.getElementById('mainContent').style.display = 'block';
+          })
+          .catch((error) => {
+            // Error (credenciales incorrectas, etc.)
+            document.getElementById('errorMessage').style.display = 'block';
+            document.getElementById('errorMessage').innerText = error.message;
+          });
+      }
+
+      /* =========================
+         LÓGICA DEL PRESENTADOR
+         ========================= */
+      // Detectamos si estamos en modo presentador (?presenter=true en la URL)
+      const inPresenterMode = window.location.search.includes('presenter=true');
+      if (inPresenterMode) {
+        document.getElementById('search-container').style.display = 'none';
+      }
+
+      // Variables globales para slides y media
+      let slides = [];
+      let currentIndex = 0;
+      let mediaFiles = []; // Array de { filename, url, type }
+
+      // Referencias a elementos
+      const lyricsDiv = document.querySelector('.lyrics');
+      const bgVideo = document.getElementById('bgVideo');
+      const bgImage = document.getElementById('bgImage');
+      const searchContainer = document.getElementById('search-container');
+      const searchInput = document.getElementById('searchInput');
+      const searchResults = document.getElementById('searchResults');
+
+      // Prevenir arrastrar/soltar
+      document.addEventListener('dragover', e => e.preventDefault());
+      document.addEventListener('drop', e => e.preventDefault());
+
+      // Funciones para decodificar y parsear RTF
+      function decodeRTF(text) {
+        return text.replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) =>
+          String.fromCharCode(parseInt(hex, 16))
+        );
+      }
+      function parseRTF(content) {
+        content = decodeRTF(content);
+        content = content.replace(/{\\fonttbl[\s\S]*?}/gi, '')
+                         .replace(/{\\\*\\generator[\s\S]*?}/gi, '')
+                         .replace(/{\\colortbl[\s\S]*?}/gi, '')
+                         .replace(/Calibri;/gi, '')
+                         .replace(/\\[a-z]+\d* ?/gi, '')
+                         .replace(/[{}]/g, '')
+                         .replace(/\\par/g, '\n');
+        return content.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+      }
+
+      // Funciones para cargar archivos
+      function loadTextFile() {
+        document.getElementById('rtfFile').click();
+      }
+      function loadMediaFile() {
+        document.getElementById('mediaFile').click();
+      }
+
+      // Pantalla completa
+      function doToggleFullscreen() {
+        if (!document.fullscreenElement) {
+          document.documentElement.requestFullscreen();
+        } else {
+          document.exitFullscreen();
+        }
+      }
+
+      // Carga de texto
+      document.getElementById('rtfFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.readAsText(file, 'UTF-8');
+        reader.onload = function(e) {
+          try {
+            slides = parseRTF(e.target.result);
+            currentIndex = 0;
+            fadeTextTransition();
+          } catch (error) {
+            alert('Error: Archivo inválido\n' + error.message);
+          }
+        };
+      });
+
+      // Carga de media
+      document.getElementById('mediaFile').addEventListener('change', function(e) {
+        const file = e.target.files[0];
+        if (!file) return;
+        const url = URL.createObjectURL(file);
+        mediaFiles.push({ filename: file.name, url: url, type: file.type });
+        if (file.type.startsWith('video')) {
+          bgVideo.src = url;
+          bgVideo.classList.add('active');
+          bgImage.classList.remove('active');
+        } else {
+          bgImage.src = url;
+          bgImage.classList.add('active');
+          bgVideo.classList.remove('active');
+        }
+      });
+
+      // Cambio de color del texto
+      document.getElementById('colorPicker').addEventListener('input', e => {
+        lyricsDiv.style.color = e.target.value;
+      });
+
+      // Transición de texto (fade)
+      function fadeTextTransition() {
+        lyricsDiv.style.opacity = 0;
+        setTimeout(() => {
+          lyricsDiv.textContent = slides[currentIndex] || '';
+          lyricsDiv.style.opacity = 1;
+        }, 500);
+      }
+      function nextSlide() {
+        currentIndex = Math.min(slides.length - 1, currentIndex + 1);
+        fadeTextTransition();
+      }
+      function previousSlide() {
+        currentIndex = Math.max(0, currentIndex - 1);
+        fadeTextTransition();
+      }
+      function toggleLyricsVisibility() {
+        lyricsDiv.classList.toggle('hidden');
+      }
+      function toggleFullscreen() {
+        doToggleFullscreen();
+      }
+
+      // Barra de búsqueda
+      function toggleSearchContainer() {
+        if (inPresenterMode) return; // En modo presentador, la barra no aparece
+        if (searchContainer.style.display === 'none' || searchContainer.style.display === '') {
+          searchContainer.style.display = 'block';
+          searchInput.focus();
+        } else {
+          searchContainer.style.display = 'none';
+          searchInput.value = '';
+          searchResults.innerHTML = '';
+        }
+      }
+      searchInput.addEventListener('input', function() {
+        const query = searchInput.value.trim().toLowerCase();
+        searchResults.innerHTML = '';
+        if (query === '') return;
+        const textResults = slides.filter(s => s.toLowerCase().includes(query));
+        const mediaResults = mediaFiles.filter(m => m.filename.toLowerCase().includes(query));
+        if (textResults.length > 0) {
+          const textHeader = document.createElement('div');
+          textHeader.textContent = "Textos:";
+          textHeader.style.fontWeight = "bold";
+          searchResults.appendChild(textHeader);
+          textResults.forEach(text => {
+            const item = document.createElement('div');
+            item.textContent = text;
+            item.addEventListener('click', () => {
+              lyricsDiv.textContent = text;
+              if (!lyricsDiv.classList.contains('hidden')) {
+                lyricsDiv.classList.add('hidden');
+              }
+              toggleSearchContainer();
+            });
+            searchResults.appendChild(item);
+          });
+        }
+        if (mediaResults.length > 0) {
+          const mediaHeader = document.createElement('div');
+          mediaHeader.textContent = "Media:";
+          mediaHeader.style.fontWeight = "bold";
+          mediaHeader.style.marginTop = "10px";
+          searchResults.appendChild(mediaHeader);
+          mediaResults.forEach(media => {
+            const item = document.createElement('div');
+            item.textContent = media.filename;
+            item.addEventListener('click', () => {
+              if (media.type.startsWith('video')) {
+                bgVideo.src = media.url;
+                bgVideo.classList.add('active');
+                bgImage.classList.remove('active');
+              } else {
+                bgImage.src = media.url;
+                bgImage.classList.add('active');
+                bgVideo.classList.remove('active');
+              }
+              toggleSearchContainer();
+            });
+            searchResults.appendChild(item);
+          });
+        }
+      });
+
+      // Panel de control emergente
+      function openControlPanel() {
+        const controlWindow = window.open('', 'PanelControl', 'width=500,height=700');
+        controlWindow.document.open();
+        controlWindow.document.write(`
+          <html>
+          <head>
+            <title>Panel de Control</title>
+            <style>
+              body { font-family: Arial, sans-serif; background: #f2f2f2; padding: 10px; }
+              button { margin: 5px; padding: 10px; font-size: 1em; }
+              input { width: 100%; padding: 5px; font-size: 1em; margin-top: 10px; }
+              #results { margin-top: 10px; }
+              #results div { padding: 2px 0; border-bottom: 1px solid #ccc; cursor: pointer; }
+              #results div:hover { background: #ddd; }
+              #previewContainer { margin-top: 20px; }
+              #previewContainer video, #previewContainer img { width: 100%; max-height: 200px; }
+              #playbackBar { margin-top: 10px; }
+            </style>
+          </head>
+          <body>
+            <h2>Panel de Control</h2>
+            <button onclick="window.opener.previousSlide()">Anterior</button>
+            <button onclick="window.opener.nextSlide()">Siguiente</button>
+            <button onclick="window.opener.toggleLyricsVisibility()">Ocultar/Revelar Texto</button>
+            <button onclick="window.opener.toggleFullscreen()">Pantalla Completa</button>
+            <br>
+            <button onclick="window.opener.loadTextFile()">Cargar Texto</button>
+            <button onclick="window.opener.loadMediaFile()">Cargar Fondo</button>
+            <hr>
+            <input type="text" id="controlSearch" placeholder="Buscar en Presentación..." />
+            <div id="results"></div>
+            <hr>
+            <div id="previewContainer">
+              <video id="previewVideo" controls style="display:none;"></video>
+              <img id="previewImage" style="display:none;" alt="Preview" />
+            </div>
+            <div id="playbackBar">
+              <button id="playPauseButton">Pause</button>
+            </div>
+            <script>
+              const resultsDiv = document.getElementById('results');
+              const controlSearch = document.getElementById('controlSearch');
+              controlSearch.addEventListener('input', () => {
+                const query = controlSearch.value.trim().toLowerCase();
+                resultsDiv.innerHTML = '';
+                if(query === '') return;
+                const textMatches = window.opener.slides.filter(s => s.toLowerCase().includes(query));
+                const mediaMatches = window.opener.mediaFiles.filter(m => m.filename.toLowerCase().includes(query));
+                if(textMatches.length > 0) {
+                  const header = document.createElement('div');
+                  header.textContent = "Textos:";
+                  header.style.fontWeight = "bold";
+                  resultsDiv.appendChild(header);
+                  textMatches.forEach(text => {
+                    const item = document.createElement('div');
+                    item.textContent = text;
+                    item.addEventListener('click', () => {
+                      window.opener.lyricsDiv.textContent = text;
+                      if(!window.opener.lyricsDiv.classList.contains('hidden')) {
+                        window.opener.lyricsDiv.classList.add('hidden');
+                      }
+                    });
+                    resultsDiv.appendChild(item);
+                  });
+                }
+                if(mediaMatches.length > 0) {
+                  const header = document.createElement('div');
+                  header.textContent = "Media:";
+                  header.style.fontWeight = "bold";
+                  header.style.marginTop = "10px";
+                  resultsDiv.appendChild(header);
+                  mediaMatches.forEach(media => {
+                    const item = document.createElement('div');
+                    item.textContent = media.filename;
+                    item.addEventListener('click', () => {
+                      if(media.type.startsWith('video')) {
+                        window.opener.bgVideo.src = media.url;
+                        window.opener.bgVideo.classList.add('active');
+                        window.opener.bgImage.classList.remove('active');
+                      } else {
+                        window.opener.bgImage.src = media.url;
+                        window.opener.bgImage.classList.add('active');
+                        window.opener.bgVideo.classList.remove('active');
+                      }
+                    });
+                    resultsDiv.appendChild(item);
+                  });
+                }
+              });
+              function updatePreview() {
+                const previewVideo = document.getElementById('previewVideo');
+                const previewImage = document.getElementById('previewImage');
+                const mainVideo = window.opener.bgVideo;
+                const mainImage = window.opener.bgImage;
+                if(mainVideo && mainVideo.classList.contains('active')) {
+                  previewVideo.style.display = 'block';
+                  previewImage.style.display = 'none';
+                  if(previewVideo.src !== mainVideo.src) {
+                    previewVideo.src = mainVideo.src;
+                  }
+                  const playPauseButton = document.getElementById('playPauseButton');
+                  playPauseButton.textContent = mainVideo.paused ? 'Play' : 'Pause';
+                  document.getElementById('playbackBar').style.display = 'block';
+                } else if(mainImage && mainImage.classList.contains('active')) {
+                  previewVideo.style.display = 'none';
+                  previewImage.style.display = 'block';
+                  if(previewImage.src !== mainImage.src) {
+                    previewImage.src = mainImage.src;
+                  }
+                  document.getElementById('playbackBar').style.display = 'none';
+                } else {
+                  previewVideo.style.display = 'none';
+                  previewImage.style.display = 'none';
+                  document.getElementById('playbackBar').style.display = 'none';
+                }
+              }
+              setInterval(updatePreview, 250);
+              document.getElementById('playPauseButton').addEventListener('click', function() {
+                const mainVideo = window.opener.bgVideo;
+                if(mainVideo.paused) { mainVideo.play(); }
+                else { mainVideo.pause(); }
+              });
+            <\/script>
+          </body>
+          </html>
+        `);
+        controlWindow.document.close();
+        controlWindow.focus();
+      }
+
+      // Atajos de teclado en la ventana principal
+      document.addEventListener('keydown', function(e) {
+        console.log(\`Tecla: \${e.key}, Ctrl: \${e.ctrlKey}, Shift: \${e.shiftKey}\`);
+        // Ctrl+Shift+L -> Ocultar/Revelar texto
+        if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'l'){
+          e.preventDefault();
+          toggleLyricsVisibility();
+        }
+        // Ctrl+Shift+X -> Barra de búsqueda (si no estás en modo presentador)
+        if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x'){
+          e.preventDefault();
+          if(!inPresenterMode) { toggleSearchContainer(); }
+        }
+        // Ctrl+Shift+Y -> Abrir panel de control
+        if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'y'){
+          e.preventDefault();
+          openControlPanel();
+        }
+        // Flecha derecha o espacio -> Siguiente diapositiva
+        if(e.key === 'ArrowRight' || e.key === ' '){
+          nextSlide();
+        }
+        // Flecha izquierda -> Diapositiva anterior
+        if(e.key === 'ArrowLeft'){
+          previousSlide();
+        }
+        // Otros atajos con Ctrl
+        if(e.ctrlKey){
+          if(e.key === 'o') { loadTextFile(); }
+          if(e.key === 'm') { loadMediaFile(); }
+          if(e.key === 'c') { document.getElementById('colorPicker').click(); }
+          if(e.key === 'f') { toggleFullscreen(); }
+        }
+      });
+    </script>
+  </div>
+</body>
+</html>
