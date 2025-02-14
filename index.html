@@ -16,7 +16,7 @@
       font-family: Arial, sans-serif;
     }
     /* =========================
-       Estilos para el Contenedor Multimedia
+       Contenedor Multimedia
        ========================= */
     #mediaContainer {
       position: fixed;
@@ -26,8 +26,7 @@
     }
     .media-content {
       object-fit: cover;
-      width: 100%;
-      height: 100%;
+      width: 100%; height: 100%;
       position: absolute;
       top: 0; left: 0;
       opacity: 0;
@@ -35,12 +34,11 @@
     }
     .media-content.active { opacity: 1; }
     /* =========================
-       Estilos para el Texto (Lyrics)
+       Texto (Lyrics)
        ========================= */
     .lyrics {
       position: fixed;
-      top: 50%;
-      left: 50%;
+      top: 50%; left: 50%;
       transform: translate(-50%, -50%);
       width: 90%;
       text-align: center;
@@ -53,7 +51,7 @@
     }
     .lyrics.hidden { opacity: 0 !important; }
     /* =========================
-       Barra de Búsqueda (para uso del panel de control)
+       Barra de Búsqueda
        ========================= */
     #search-container {
       display: none;
@@ -89,19 +87,19 @@
   </style>
 </head>
 <body>
-  <!-- Inputs para cargar archivos, posicionados fuera de la pantalla -->
-  <input type="file" id="rtfFile" accept=".rtf, .txt" style="position:absolute; left:-9999px;">
-  <input type="file" id="mediaFile" accept="video/*,image/*" style="position:absolute; left:-9999px;">
-  <input type="color" id="colorPicker" style="position:absolute; left:-9999px;">
+  <!-- Inputs para cargar archivos. Están invisibles pero accesibles -->
+  <input type="file" id="rtfFile" accept=".rtf, .txt" style="opacity:0; position:absolute; width:1px; height:1px;">
+  <input type="file" id="mediaFile" accept="video/*,image/*" style="opacity:0; position:absolute; width:1px; height:1px;">
+  <input type="color" id="colorPicker" style="opacity:0; position:absolute; width:1px; height:1px;">
 
   <!-- Contenedor Multimedia -->
   <div id="mediaContainer">
-    <!-- El atributo "muted" evita reproducir audio; quítalo si deseas audio -->
+    <!-- El atributo "muted" evita reproducir audio; quítalo si deseas escuchar audio -->
     <video id="bgVideo" class="media-content" autoplay muted loop></video>
     <img id="bgImage" class="media-content" alt="Background">
   </div>
 
-  <!-- Texto principal -->
+  <!-- Texto principal (Lyrics) -->
   <div class="lyrics">Aquí se mostrarán las líneas de texto</div>
 
   <!-- Barra de Búsqueda (se activa desde el panel de control) -->
@@ -110,14 +108,11 @@
     <div id="searchResults"></div>
   </div>
 
-  <!-- =========================
-       Código JavaScript del Presentador
-       ========================= -->
   <script>
     // Variables globales
-    let slides = [];         // Array para almacenar líneas de texto (slides)
-    let currentIndex = 0;    // Índice de la línea actual
-    let mediaFiles = [];     // Array de objetos { filename, url, type }
+    let slides = [];         // Arreglo para almacenar líneas de texto
+    let currentIndex = 0;    // Índice actual
+    let mediaFiles = [];     // Arreglo de objetos { filename, url, type }
 
     // Referencias a elementos
     const lyricsDiv = document.querySelector('.lyrics');
@@ -127,18 +122,18 @@
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
 
-    // Prevenir el comportamiento por defecto de arrastrar y soltar
+    // Prevenir comportamiento por defecto de arrastrar/soltar
     document.addEventListener('dragover', e => e.preventDefault());
     document.addEventListener('drop', e => e.preventDefault());
 
-    // Función para decodificar secuencias de RTF (por ejemplo, \'e1 para á)
+    // Función para decodificar secuencias RTF (ejemplo: \'e1 para á)
     function decodeRTF(text) {
       return text.replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) =>
         String.fromCharCode(parseInt(hex, 16))
       );
     }
 
-    // Función para procesar archivos de texto RTF/TXT
+    // Función para parsear el contenido de archivos RTF/TXT
     function parseRTF(content) {
       content = decodeRTF(content);
       content = content.replace(/{\\fonttbl[\s\S]*?}/gi, '')
@@ -151,7 +146,7 @@
       return content.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     }
 
-    // Funciones para abrir los diálogos de archivos
+    // Funciones para abrir diálogos de archivos
     function loadTextFile() {
       document.getElementById('rtfFile').click();
     }
@@ -160,18 +155,15 @@
     }
 
     // Función para alternar pantalla completa
-    function doToggleFullscreen() {
+    function toggleFullscreen() {
       if (!document.fullscreenElement) {
         document.documentElement.requestFullscreen();
       } else {
         document.exitFullscreen();
       }
     }
-    function toggleFullscreen() {
-      doToggleFullscreen();
-    }
 
-    // Función para actualizar el texto (con efecto fade)
+    // Función para actualizar el texto (efecto fade)
     function fadeTextTransition() {
       lyricsDiv.style.opacity = 0;
       setTimeout(() => {
@@ -193,9 +185,8 @@
       lyricsDiv.classList.toggle('hidden');
     }
 
-    // Función para alternar la visibilidad de la barra de búsqueda
+    // Función para alternar la barra de búsqueda
     function toggleSearchContainer() {
-      // Si deseas que la barra de búsqueda solo aparezca al activarse desde el panel de control
       if (searchContainer.style.display === 'none' || searchContainer.style.display === '') {
         searchContainer.style.display = 'block';
         searchInput.focus();
@@ -206,7 +197,46 @@
       }
     }
 
-    // Lógica de búsqueda en la ventana principal
+    // Cargar archivo de texto
+    document.getElementById('rtfFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.readAsText(file, 'UTF-8');
+      reader.onload = function(e) {
+        try {
+          slides = parseRTF(e.target.result);
+          currentIndex = 0;
+          fadeTextTransition();
+        } catch (error) {
+          alert('Error: Archivo inválido\n' + error.message);
+        }
+      };
+    });
+
+    // Cargar archivo de media (video o imagen)
+    document.getElementById('mediaFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      mediaFiles.push({ filename: file.name, url: url, type: file.type });
+      if (file.type.startsWith('video')) {
+        bgVideo.src = url;
+        bgVideo.classList.add('active');
+        bgImage.classList.remove('active');
+      } else {
+        bgImage.src = url;
+        bgImage.classList.add('active');
+        bgVideo.classList.remove('active');
+      }
+    });
+
+    // Cambio de color del texto (opcional)
+    document.getElementById('colorPicker').addEventListener('input', e => {
+      lyricsDiv.style.color = e.target.value;
+    });
+
+    // Función de búsqueda en la ventana principal
     searchInput.addEventListener('input', function() {
       const query = searchInput.value.trim().toLowerCase();
       searchResults.innerHTML = '';
@@ -260,30 +290,24 @@
     // Atajos de teclado en la ventana principal
     document.addEventListener('keydown', function(e) {
       console.log(`Tecla: ${e.key}, Ctrl: ${e.ctrlKey}, Shift: ${e.shiftKey}`);
-      // Ctrl+Shift+L: Ocultar/Revelar Texto
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'l') {
         e.preventDefault();
         toggleLyricsVisibility();
       }
-      // Ctrl+Shift+X: Alternar la barra de búsqueda
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x') {
         e.preventDefault();
         toggleSearchContainer();
       }
-      // Ctrl+Shift+Y: Abrir el panel de control
       if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'y') {
         e.preventDefault();
         openControlPanel();
       }
-      // Flecha derecha o espacio: siguiente diapositiva
       if (e.key === 'ArrowRight' || e.key === ' ') {
         nextSlide();
       }
-      // Flecha izquierda: diapositiva anterior
       if (e.key === 'ArrowLeft') {
         previousSlide();
       }
-      // Atajos con Ctrl para cargar archivos y pantalla completa
       if (e.ctrlKey) {
         if (e.key === 'o') { loadTextFile(); }
         if (e.key === 'm') { loadMediaFile(); }
@@ -333,16 +357,15 @@
             <button id="playPauseButton">Pause</button>
           </div>
           <script>
-            // Funcionalidad de búsqueda en el panel de control
             const resultsDiv = document.getElementById('results');
             const controlSearch = document.getElementById('controlSearch');
             controlSearch.addEventListener('input', () => {
               const query = controlSearch.value.trim().toLowerCase();
               resultsDiv.innerHTML = '';
-              if (query === '') return;
+              if(query === '') return;
               const textMatches = window.opener.slides.filter(s => s.toLowerCase().includes(query));
               const mediaMatches = window.opener.mediaFiles.filter(m => m.filename.toLowerCase().includes(query));
-              if (textMatches.length > 0) {
+              if(textMatches.length > 0) {
                 const header = document.createElement('div');
                 header.textContent = "Textos:";
                 header.style.fontWeight = "bold";
@@ -352,14 +375,14 @@
                   item.textContent = text;
                   item.addEventListener('click', () => {
                     window.opener.lyricsDiv.textContent = text;
-                    if (!window.opener.lyricsDiv.classList.contains('hidden')) {
+                    if(!window.opener.lyricsDiv.classList.contains('hidden')) {
                       window.opener.lyricsDiv.classList.add('hidden');
                     }
                   });
                   resultsDiv.appendChild(item);
                 });
               }
-              if (mediaMatches.length > 0) {
+              if(mediaMatches.length > 0) {
                 const header = document.createElement('div');
                 header.textContent = "Media:";
                 header.style.fontWeight = "bold";
@@ -369,7 +392,7 @@
                   const item = document.createElement('div');
                   item.textContent = media.filename;
                   item.addEventListener('click', () => {
-                    if (media.type.startsWith('video')) {
+                    if(media.type.startsWith('video')) {
                       window.opener.bgVideo.src = media.url;
                       window.opener.bgVideo.classList.add('active');
                       window.opener.bgImage.classList.remove('active');
@@ -383,25 +406,24 @@
                 });
               }
             });
-            // Actualizar previsualización cada 250 ms
             function updatePreview() {
               const previewVideo = document.getElementById('previewVideo');
               const previewImage = document.getElementById('previewImage');
               const mainVideo = window.opener.bgVideo;
               const mainImage = window.opener.bgImage;
-              if (mainVideo && mainVideo.classList.contains('active')) {
+              if(mainVideo && mainVideo.classList.contains('active')) {
                 previewVideo.style.display = 'block';
                 previewImage.style.display = 'none';
-                if (previewVideo.src !== mainVideo.src) {
+                if(previewVideo.src !== mainVideo.src) {
                   previewVideo.src = mainVideo.src;
                 }
                 const playPauseButton = document.getElementById('playPauseButton');
                 playPauseButton.textContent = mainVideo.paused ? 'Play' : 'Pause';
                 document.getElementById('playbackBar').style.display = 'block';
-              } else if (mainImage && mainImage.classList.contains('active')) {
+              } else if(mainImage && mainImage.classList.contains('active')) {
                 previewVideo.style.display = 'none';
                 previewImage.style.display = 'block';
-                if (previewImage.src !== mainImage.src) {
+                if(previewImage.src !== mainImage.src) {
                   previewImage.src = mainImage.src;
                 }
                 document.getElementById('playbackBar').style.display = 'none';
@@ -414,7 +436,7 @@
             setInterval(updatePreview, 250);
             document.getElementById('playPauseButton').addEventListener('click', function() {
               const mainVideo = window.opener.bgVideo;
-              if (mainVideo.paused) { mainVideo.play(); }
+              if(mainVideo.paused) { mainVideo.play(); }
               else { mainVideo.pause(); }
             });
           <\/script>
@@ -440,8 +462,12 @@
         e.preventDefault();
         openControlPanel();
       }
-      if (e.key === 'ArrowRight' || e.key === ' ') { nextSlide(); }
-      if (e.key === 'ArrowLeft') { previousSlide(); }
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        nextSlide();
+      }
+      if (e.key === 'ArrowLeft') {
+        previousSlide();
+      }
       if (e.ctrlKey) {
         if (e.key === 'o') { loadTextFile(); }
         if (e.key === 'm') { loadMediaFile(); }
