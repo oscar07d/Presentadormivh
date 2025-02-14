@@ -47,8 +47,7 @@
       color: rgba(255, 255, 255, 0.9);
       text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
       font-size: 1.5em;
-      /* Padding modificado a 0px 0px */
-      padding: 0px 0px;
+      padding: 0px 0px; /* Padding modificado */
       border-radius: 8px;
       max-width: 80%;
       background: rgba(0, 0, 0, 0.7);
@@ -68,7 +67,6 @@
       transition: opacity 0.5s ease;
       line-height: 1.4;
     }
-    /* Forzar la ocultación con !important */
     .lyrics.hidden {
       opacity: 0 !important;
     }
@@ -136,13 +134,10 @@
   </div>
 
   <script>
-    // Modo presentación: Si la URL contiene "presenter=true", se ocultan todos los controles extras //
+    // Modo presentación: Si la URL contiene "presenter=true", se ocultan los controles extras
     const inPresenterMode = window.location.search.includes('presenter=true');
     if (inPresenterMode) {
-      const searchContainer = document.getElementById('search-container');
-      if (searchContainer) {
-        searchContainer.style.display = 'none';
-      }
+      document.getElementById('search-container').style.display = 'none';
     }
 
     // ==============================
@@ -404,6 +399,10 @@
               border: 1px solid #ccc;
               border-radius: 5px;
             }
+            input[type="range"] {
+              width: 100%;
+              margin-top: 10px;
+            }
             #results {
               margin-top: 10px;
               max-height: 150px;
@@ -434,7 +433,9 @@
               margin-top: 10px;
               text-align: center;
             }
-            /* Estilos para los botones de selección de archivo */
+            /* ==============================
+               Estilos para los botones de selección de archivo
+               ============================== */
             .file-label {
               display: inline-block;
               background-color: #2196F3;
@@ -462,6 +463,10 @@
           <input type="file" id="controlTextFile" accept=".rtf, .txt" style="display:none;" />
           <label for="controlMediaFile" class="file-label">Seleccionar Archivo de Fondo</label>
           <input type="file" id="controlMediaFile" accept="video/*, image/*" style="display:none;" />
+          <br>
+          <!-- Control para ajustar el tamaño del texto -->
+          <label for="textSizeRange">Tamaño del Texto:</label>
+          <input type="range" id="textSizeRange" min="1" max="10" step="0.1" value="3.5">
           <hr>
           <input type="text" id="controlSearch" placeholder="Buscar en Presentación..." />
           <div id="results"></div>
@@ -475,7 +480,7 @@
             <button id="playPauseButton">Pause</button>
           </div>
           <script>
-            // Asignar eventos a los inputs de selección de archivo //
+            // Asignar eventos a los inputs de selección de archivo
             document.getElementById('controlTextFile').addEventListener('change', function(){
               var file = this.files[0];
               if(file) {
@@ -542,9 +547,9 @@
               }
             });
             
-            // ============================== //
-            // Actualizar la previsualización y la barra de reproducción en tiempo real //
-            // ============================== //
+            // ==============================
+            // Actualizar la previsualización y la barra de reproducción en tiempo real
+            // ==============================
             function updatePreview() {
               var previewVideo = document.getElementById('previewVideo');
               var previewImage = document.getElementById('previewImage');
@@ -578,9 +583,9 @@
             }
             setInterval(updatePreview, 1000);
             
-            // ============================== //
-            // Control de play/pause para el video de fondo //
-            // ============================== //
+            // ==============================
+            // Control de play/pause para el video de fondo
+            // ==============================
             document.getElementById('playPauseButton').addEventListener('click', function() {
               var bgVid = window.opener.bgVideo;
               if(bgVid.paused) {
@@ -589,15 +594,23 @@
                 bgVid.pause();
               }
             });
+            
+            // ==============================
+            // Control para ajustar el tamaño del texto
+            // ==============================
+            document.getElementById('textSizeRange').addEventListener('input', function() {
+              var size = this.value;
+              window.opener.lyricsDiv.style.fontSize = size + "vw";
+            });
           <\/script>
         </body>
         </html>
       `);
     }
 
-    // ============================== //
-    // Atajos de teclado en la ventana principal //
-    // ============================== //
+    // ==============================
+    // Atajos de teclado en la ventana principal
+    // ==============================
     document.addEventListener('keydown', e => {
       console.log(`Tecla: ${e.key}, Ctrl: ${e.ctrlKey}, Shift: ${e.shiftKey}`);
       // Ctrl+Shift+L: Ocultar/Revelar Texto
