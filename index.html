@@ -1,65 +1,87 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Presentador sin Autenticación</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Presentador Profesional</title>
   <style>
-    /* =========================
-       Estilos Generales
-       ========================= */
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    /* ==============================
+       Estilos básicos
+       ============================== */
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
     body {
       height: 100vh;
       overflow: hidden;
       background: #000;
       font-family: Arial, sans-serif;
     }
-    /* =========================
-       Contenedor Multimedia
-       ========================= */
     #mediaContainer {
       position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
       z-index: -1;
     }
     .media-content {
       object-fit: cover;
-      width: 100%; height: 100%;
+      width: 100%;
+      height: 100%;
       position: absolute;
-      top: 0; left: 0;
+      top: 0;
+      left: 0;
       opacity: 0;
       transition: opacity 0.5s ease;
     }
-    .media-content.active { opacity: 1; }
-    /* =========================
-       Texto (Lyrics)
-       ========================= */
+    .media-content.active {
+      opacity: 1;
+    }
+    .song-info {
+      position: fixed;
+      top: 20px;
+      left: 20px;
+      color: rgba(255, 255, 255, 0.9);
+      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
+      font-size: 1.5em;
+      /* Padding modificado a 0px 0px */
+      padding: 0px 0px;
+      border-radius: 8px;
+      max-width: 80%;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(5px);
+    }
     .lyrics {
       position: fixed;
-      top: 50%; left: 50%;
+      top: 50%;
+      left: 50%;
       transform: translate(-50%, -50%);
       width: 90%;
       text-align: center;
       color: #fff;
       font-size: 3.5vw;
-      text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
+      text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.9);
       opacity: 1;
       transition: opacity 0.5s ease;
       line-height: 1.4;
     }
-    .lyrics.hidden { opacity: 0 !important; }
-    /* =========================
-       Barra de Búsqueda (para el uso del panel de control)
-       ========================= */
+    /* Forzar la ocultación con !important */
+    .lyrics.hidden {
+      opacity: 0 !important;
+    }
+    /* ==============================
+       Barra de búsqueda (oculta por defecto)
+       ============================== */
     #search-container {
       display: none;
       position: fixed;
       top: 10px;
       left: 50%;
       transform: translateX(-50%);
-      background: rgba(0,0,0,0.8);
+      background: rgba(0, 0, 0, 0.8);
       padding: 10px;
       border-radius: 5px;
       z-index: 300;
@@ -83,104 +105,161 @@
       padding: 2px 0;
       border-bottom: 1px solid rgba(255,255,255,0.1);
     }
-    #searchResults div:hover { background: rgba(255,255,255,0.1); }
+    #searchResults div:hover {
+      background: rgba(255,255,255,0.1);
+    }
   </style>
 </head>
 <body>
-  <!-- Inputs para cargar archivos (invisibles pero accesibles) -->
-  <input type="file" id="rtfFile" accept=".rtf, .txt" style="opacity:0; position:absolute; width:1px; height:1px;">
-  <input type="file" id="mediaFile" accept="video/*,image/*" style="opacity:0; position:absolute; width:1px; height:1px;">
-  <input type="color" id="colorPicker" style="opacity:0; position:absolute; width:1px; height:1px;">
+  <!-- ==============================
+       Inputs ocultos para cargar archivos y color
+       ============================== -->
+  <input type="file" id="rtfFile" accept=".rtf, .txt" hidden />
+  <input type="file" id="mediaFile" accept="video/*,image/*" hidden />
+  <input type="color" id="colorPicker" hidden />
 
-  <!-- Contenedor Multimedia -->
   <div id="mediaContainer">
-    <!-- El atributo "muted" evita reproducir audio; quítalo si deseas audio -->
+    <!-- El atributo "muted" hace que el audio no se reproduzca -->
     <video id="bgVideo" class="media-content" autoplay muted loop></video>
-    <img id="bgImage" class="media-content" alt="Background">
+    <img id="bgImage" class="media-content" alt="Background" />
   </div>
 
-  <!-- Texto principal -->
-  <div class="lyrics">Aquí se mostrarán las líneas de texto</div>
+  <div class="song-info"></div>
+  <div class="lyrics"></div>
 
-  <!-- Barra de Búsqueda -->
+  <!-- ==============================
+       Barra de búsqueda (se activa solo en modo control)
+       ============================== -->
   <div id="search-container">
-    <input type="text" id="searchInput" placeholder="Buscar canciones, versículos, media...">
+    <input type="text" id="searchInput" placeholder="Buscar canciones, versículos, media..." />
     <div id="searchResults"></div>
   </div>
 
   <script>
-    // =========================
-    // Variables Globales y Referencias
-    // =========================
-    let slides = ["Diapositiva 1", "Diapositiva 2", "Diapositiva 3"];
+    // Modo presentación: Si la URL contiene "presenter=true", se ocultan todos los controles extras //
+    const inPresenterMode = window.location.search.includes('presenter=true');
+    if (inPresenterMode) {
+      const searchContainer = document.getElementById('search-container');
+      if (searchContainer) {
+        searchContainer.style.display = 'none';
+      }
+    }
+
+    // ==============================
+    // Variables globales
+    // ==============================
+    let slides = [];
     let currentIndex = 0;
-    let mediaFiles = []; // Array de objetos: { filename, url, type }
+    let mediaFiles = []; // Almacena archivos de media //
 
     const lyricsDiv = document.querySelector('.lyrics');
+    const songInfoDiv = document.querySelector('.song-info');
     const bgVideo = document.getElementById('bgVideo');
     const bgImage = document.getElementById('bgImage');
+
     const searchContainer = document.getElementById('search-container');
     const searchInput = document.getElementById('searchInput');
     const searchResults = document.getElementById('searchResults');
 
-    // =========================
-    // Prevención de arrastrar y soltar
-    // =========================
+    // ==============================
+    // Prevenir el comportamiento por defecto al arrastrar/soltar archivos
+    // ==============================
     document.addEventListener('dragover', e => e.preventDefault());
     document.addEventListener('drop', e => e.preventDefault());
 
-    // =========================
-    // Funciones de Utilidad
-    // =========================
+    // ==============================
+    // Función para decodificar secuencias hexadecimales (ejemplo: \'e1 para á)
+    // ==============================
     function decodeRTF(text) {
       return text.replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) =>
         String.fromCharCode(parseInt(hex, 16))
       );
     }
+
+    // ==============================
+    // Función para procesar archivos RTF o TXT
+    // ==============================
     function parseRTF(content) {
       content = decodeRTF(content);
-      content = content.replace(/{\\fonttbl[\s\S]*?}/gi, '')
-                       .replace(/{\\\*\\generator[\s\S]*?}/gi, '')
-                       .replace(/{\\colortbl[\s\S]*?}/gi, '')
-                       .replace(/Calibri;/gi, '')
-                       .replace(/\\[a-z]+\d* ?/gi, '')
-                       .replace(/[{}]/g, '')
-                       .replace(/\\par/g, '\n');
+      content = content.replace(/{\\fonttbl[\s\S]*?}/gi, '');
+      content = content.replace(/{\\\*\\generator[\s\S]*?}/gi, '');
+      content = content.replace(/{\\colortbl[\s\S]*?}/gi, '');
+      content = content.replace(/Calibri;/gi, '');
+      content = content.replace(/\\[a-z]+\d* ?/gi, '');
+      content = content.replace(/[{}]/g, '');
+      content = content.replace(/\\par/g, '\n');
       return content.split('\n').map(line => line.trim()).filter(line => line.length > 0);
     }
 
-    // =========================
-    // Funciones para Cargar Archivos
-    // =========================
-    function loadTextFile() {
-      // Nota: Llamar al .click() desde un pop-up puede no ser considerado un "gesto de usuario" válido.
-      document.getElementById('rtfFile').click();
-    }
-    function loadMediaFile() {
-      document.getElementById('mediaFile').click();
+    // ==============================
+    // Función para cargar texto desde un archivo (usada por el panel de control)
+    // ==============================
+    function loadTextFromFile(file) {
+      var reader = new FileReader();
+      reader.onload = function(e) {
+        try {
+          slides = parseRTF(e.target.result);
+          currentIndex = 0;
+          fadeTextTransition();
+        } catch (error) {
+          alert("Error: Archivo inválido\n" + error.message);
+        }
+      };
+      reader.readAsText(file, "UTF-8");
     }
 
-    // =========================
-    // Función para Pantalla Completa
-    // =========================
-    function toggleFullscreen() {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
+    // ==============================
+    // Función para cargar media desde un archivo (usada por el panel de control)
+    // ==============================
+    function loadMediaFromFile(file) {
+      var url = URL.createObjectURL(file);
+      mediaFiles.push({ filename: file.name, url: url, type: file.type });
+      if (file.type.startsWith("video")) {
+        bgVideo.src = url;
+        bgVideo.classList.add("active");
+        bgImage.classList.remove("active");
       } else {
-        document.exitFullscreen();
+        bgImage.src = url;
+        bgImage.classList.add("active");
+        bgVideo.classList.remove("active");
       }
     }
 
-    // =========================
-    // Funciones para el Texto (Diapositivas)
-    // =========================
+    // ==============================
+    // Eventos para cargar archivos desde los inputs ocultos (funcionalidad original)
+    // ==============================
+    document.getElementById('rtfFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      loadTextFromFile(file);
+    });
+    document.getElementById('mediaFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      loadMediaFromFile(file);
+    });
+
+    // ==============================
+    // Cambio de color del texto
+    // ==============================
+    document.getElementById('colorPicker').addEventListener('input', e => {
+      lyricsDiv.style.color = e.target.value;
+    });
+
+    // ==============================
+    // Transición del texto (fade-out, cambio y fade-in)
+    // ==============================
     function fadeTextTransition() {
       lyricsDiv.style.opacity = 0;
       setTimeout(() => {
-        lyricsDiv.textContent = slides[currentIndex] || "";
+        lyricsDiv.textContent = slides[currentIndex] || '';
         lyricsDiv.style.opacity = 1;
       }, 500);
     }
+
+    // ==============================
+    // Control de diapositivas
+    // ==============================
     function nextSlide() {
       currentIndex = Math.min(slides.length - 1, currentIndex + 1);
       fadeTextTransition();
@@ -189,14 +268,30 @@
       currentIndex = Math.max(0, currentIndex - 1);
       fadeTextTransition();
     }
+
+    // ==============================
+    // Alternar visibilidad del texto
+    // ==============================
     function toggleLyricsVisibility() {
       lyricsDiv.classList.toggle('hidden');
     }
 
-    // =========================
-    // Función para Alternar la Barra de Búsqueda
-    // =========================
+    // ==============================
+    // Alternar pantalla completa
+    // ==============================
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    }
+
+    // ==============================
+    // Función para alternar la visibilidad de la barra de búsqueda (modo control)
+    // ==============================
     function toggleSearchContainer() {
+      if (inPresenterMode) return;
       if (searchContainer.style.display === 'none' || searchContainer.style.display === '') {
         searchContainer.style.display = 'block';
         searchInput.focus();
@@ -207,50 +302,13 @@
       }
     }
 
-    // =========================
-    // Eventos de Carga de Archivos
-    // =========================
-    document.getElementById('rtfFile').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.readAsText(file, 'UTF-8');
-      reader.onload = function(e) {
-        try {
-          slides = parseRTF(e.target.result);
-          currentIndex = 0;
-          fadeTextTransition();
-        } catch (error) {
-          alert("Error al procesar el archivo: " + error.message);
-        }
-      };
-    });
-    document.getElementById('mediaFile').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const url = URL.createObjectURL(file);
-      mediaFiles.push({ filename: file.name, url: url, type: file.type });
-      if (file.type.startsWith('video')) {
-        bgVideo.src = url;
-        bgVideo.classList.add('active');
-        bgImage.classList.remove('active');
-      } else {
-        bgImage.src = url;
-        bgImage.classList.add('active');
-        bgVideo.classList.remove('active');
-      }
-    });
-    document.getElementById('colorPicker').addEventListener('input', function(e) {
-      lyricsDiv.style.color = e.target.value;
-    });
-
-    // =========================
-    // Lógica de Búsqueda en la Ventana Principal
-    // =========================
+    // ==============================
+    // Lógica de búsqueda en la pestaña principal
+    // ==============================
     searchInput.addEventListener('input', function() {
       const query = searchInput.value.trim().toLowerCase();
       searchResults.innerHTML = '';
-      if (query === "") return;
+      if (query === '') return;
       const textResults = slides.filter(s => s.toLowerCase().includes(query));
       const mediaResults = mediaFiles.filter(m => m.filename.toLowerCase().includes(query));
       if (textResults.length > 0) {
@@ -297,104 +355,146 @@
       }
     });
 
-    // =========================
-    // Atajos de Teclado en la Ventana Principal
-    // =========================
-    document.addEventListener('keydown', function(e) {
-      console.log(`Tecla: ${e.key}, Ctrl: ${e.ctrlKey}, Shift: ${e.shiftKey}`);
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'l') {
-        e.preventDefault();
-        toggleLyricsVisibility();
-      }
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x') {
-        e.preventDefault();
-        toggleSearchContainer();
-      }
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        openControlPanel();
-      }
-      if (e.key === 'ArrowRight' || e.key === ' ') {
-        nextSlide();
-      }
-      if (e.key === 'ArrowLeft') {
-        previousSlide();
-      }
-      if (e.ctrlKey) {
-        if (e.key === 'o') { loadTextFile(); }
-        if (e.key === 'm') { loadMediaFile(); }
-        if (e.key === 'c') { document.getElementById('colorPicker').click(); }
-        if (e.key === 'f') { toggleFullscreen(); }
-      }
-    });
-
-    // =========================
-    // Función para Abrir el Panel de Control Emergente
-    // =========================
+    // ==============================
+    // Función para abrir un panel de control emergente
+    // ==============================
     function openControlPanel() {
-      const controlWindow = window.open('', 'PanelControl', 'width=500,height=700');
-      controlWindow.document.open();
+      var controlWindow = window.open("about:blank", "PanelControl", "width=500,height=700");
+      if (!controlWindow) {
+        alert("Pop-ups bloqueados. Por favor, habilítalos para abrir el panel de control.");
+        return;
+      }
       controlWindow.document.write(`
         <html>
         <head>
           <title>Panel de Control</title>
           <style>
-            body { font-family: Arial, sans-serif; background: #f2f2f2; padding: 10px; }
-            button { margin: 5px; padding: 10px; font-size: 1em; }
-            input { width: 100%; padding: 5px; font-size: 1em; margin-top: 10px; }
-            #results { margin-top: 10px; }
-            #results div { padding: 2px 0; border-bottom: 1px solid #ccc; cursor: pointer; }
-            #results div:hover { background: #ddd; }
-            #previewContainer { margin-top: 20px; }
-            #previewContainer video, #previewContainer img { width: 100%; max-height: 200px; }
-            #playbackBar { margin-top: 10px; }
+            /* ==============================
+               Estilos para el Panel de Control
+               ============================== */
+            body {
+              font-family: Arial, sans-serif;
+              background: linear-gradient(135deg, #f2f2f2, #ddd);
+              padding: 20px;
+              color: #333;
+            }
+            h2 {
+              text-align: center;
+              margin-bottom: 20px;
+            }
+            button {
+              margin: 5px;
+              padding: 10px 15px;
+              font-size: 1em;
+              border: none;
+              border-radius: 5px;
+              background-color: #4CAF50;
+              color: white;
+              cursor: pointer;
+              transition: background-color 0.3s;
+            }
+            button:hover {
+              background-color: #45a049;
+            }
+            input[type="text"] {
+              width: 100%;
+              padding: 8px;
+              font-size: 1em;
+              margin-top: 10px;
+              border: 1px solid #ccc;
+              border-radius: 5px;
+            }
+            #results {
+              margin-top: 10px;
+              max-height: 150px;
+              overflow-y: auto;
+              border: 1px solid #ccc;
+              border-radius: 5px;
+              padding: 5px;
+              background: #fff;
+            }
+            #results div {
+              padding: 5px;
+              border-bottom: 1px solid #eee;
+              cursor: pointer;
+            }
+            #results div:hover {
+              background: #f9f9f9;
+            }
+            #previewContainer {
+              margin-top: 20px;
+            }
+            #previewContainer video, #previewContainer img {
+              width: 100%;
+              max-height: 200px;
+              border: 1px solid #ccc;
+              border-radius: 5px;
+            }
+            #playbackBar {
+              margin-top: 10px;
+              text-align: center;
+            }
+            /* Estilos para los botones de selección de archivo */
+            .file-label {
+              display: inline-block;
+              background-color: #2196F3;
+              color: white;
+              padding: 8px 12px;
+              margin: 5px;
+              border-radius: 4px;
+              cursor: pointer;
+              transition: background-color 0.3s;
+            }
+            .file-label:hover {
+              background-color: #1976d2;
+            }
           </style>
         </head>
         <body>
           <h2>Panel de Control</h2>
-          <button id="btnPrevious">Anterior</button>
-          <button id="btnNext">Siguiente</button>
-          <button id="btnToggleLyrics">Ocultar/Revelar Texto</button>
-          <button id="btnFullscreen">Pantalla Completa</button>
+          <button onclick="window.opener.previousSlide()">Anterior</button>
+          <button onclick="window.opener.nextSlide()">Siguiente</button>
+          <button onclick="window.opener.toggleLyricsVisibility()">Ocultar/Revelar Texto</button>
+          <button onclick="window.opener.toggleFullscreen()">Pantalla Completa</button>
           <br>
-          <button id="btnLoadText">Cargar Texto (Ctrl+O)</button>
-          <button id="btnLoadMedia">Cargar Fondo (Ctrl+M)</button>
+          <!-- Botones de selección de archivo en el panel de control -->
+          <label for="controlTextFile" class="file-label">Seleccionar Archivo de Texto</label>
+          <input type="file" id="controlTextFile" accept=".rtf, .txt" style="display:none;" />
+          <label for="controlMediaFile" class="file-label">Seleccionar Archivo de Fondo</label>
+          <input type="file" id="controlMediaFile" accept="video/*, image/*" style="display:none;" />
           <hr>
-          <input type="text" id="controlSearch" placeholder="Buscar en Presentación...">
+          <input type="text" id="controlSearch" placeholder="Buscar en Presentación..." />
           <div id="results"></div>
           <hr>
+          <!-- Previsualización y barra de reproducción -->
           <div id="previewContainer">
             <video id="previewVideo" controls style="display:none;"></video>
-            <img id="previewImage" style="display:none;" alt="Preview">
+            <img id="previewImage" style="display:none;" alt="Preview" />
           </div>
           <div id="playbackBar">
-            <button id="btnPlayPause">Pause</button>
+            <button id="playPauseButton">Pause</button>
           </div>
           <script>
-            // Asignamos los eventos sin usar atributos inline
-            document.getElementById('btnPrevious').addEventListener('click', function() {
-              window.opener.previousSlide();
+            // Asignar eventos a los inputs de selección de archivo //
+            document.getElementById('controlTextFile').addEventListener('change', function(){
+              var file = this.files[0];
+              if(file) {
+                window.opener.loadTextFromFile(file);
+              }
             });
-            document.getElementById('btnNext').addEventListener('click', function() {
-              window.opener.nextSlide();
-            });
-            document.getElementById('btnToggleLyrics').addEventListener('click', function() {
-              window.opener.toggleLyricsVisibility();
-            });
-            document.getElementById('btnFullscreen').addEventListener('click', function() {
-              window.opener.toggleFullscreen();
-            });
-            document.getElementById('btnLoadText').addEventListener('click', function() {
-              // Se accede directamente al input del documento padre
-              window.opener.document.getElementById('rtfFile').click();
-            });
-            document.getElementById('btnLoadMedia').addEventListener('click', function() {
-              window.opener.document.getElementById('mediaFile').click();
+            document.getElementById('controlMediaFile').addEventListener('change', function(){
+              var file = this.files[0];
+              if(file) {
+                window.opener.loadMediaFromFile(file);
+              }
             });
             
+            // ==============================
+            // Funcionalidad de búsqueda en el panel de control
+            // ==============================
             const resultsDiv = document.getElementById('results');
             const controlSearch = document.getElementById('controlSearch');
-            controlSearch.addEventListener('input', function() {
+            controlSearch.addEventListener('input', () => {
               const query = controlSearch.value.trim().toLowerCase();
               resultsDiv.innerHTML = '';
               if(query === '') return;
@@ -405,10 +505,10 @@
                 header.textContent = "Textos:";
                 header.style.fontWeight = "bold";
                 resultsDiv.appendChild(header);
-                textMatches.forEach(function(text) {
+                textMatches.forEach(text => {
                   const item = document.createElement('div');
                   item.textContent = text;
-                  item.addEventListener('click', function() {
+                  item.addEventListener('click', () => {
                     window.opener.lyricsDiv.textContent = text;
                     if(!window.opener.lyricsDiv.classList.contains('hidden')) {
                       window.opener.lyricsDiv.classList.add('hidden');
@@ -423,10 +523,10 @@
                 header.style.fontWeight = "bold";
                 header.style.marginTop = "10px";
                 resultsDiv.appendChild(header);
-                mediaMatches.forEach(function(media) {
+                mediaMatches.forEach(media => {
                   const item = document.createElement('div');
                   item.textContent = media.filename;
-                  item.addEventListener('click', function() {
+                  item.addEventListener('click', () => {
                     if(media.type.startsWith('video')) {
                       window.opener.bgVideo.src = media.url;
                       window.opener.bgVideo.classList.add('active');
@@ -442,25 +542,32 @@
               }
             });
             
+            // ============================== //
+            // Actualizar la previsualización y la barra de reproducción en tiempo real //
+            // ============================== //
             function updatePreview() {
-              const previewVideo = document.getElementById('previewVideo');
-              const previewImage = document.getElementById('previewImage');
-              const mainVideo = window.opener.bgVideo;
-              const mainImage = window.opener.bgImage;
-              if(mainVideo && mainVideo.classList.contains('active')) {
+              var previewVideo = document.getElementById('previewVideo');
+              var previewImage = document.getElementById('previewImage');
+              var bgVid = window.opener.bgVideo;
+              var bgImg = window.opener.bgImage;
+              if(bgVid && bgVid.classList.contains('active')) {
                 previewVideo.style.display = 'block';
                 previewImage.style.display = 'none';
-                if(previewVideo.src !== mainVideo.src) {
-                  previewVideo.src = mainVideo.src;
+                if(previewVideo.src !== bgVid.src) {
+                  previewVideo.src = bgVid.src;
                 }
-                const playPauseButton = document.getElementById('btnPlayPause');
-                playPauseButton.textContent = mainVideo.paused ? 'Play' : 'Pause';
+                var playPauseButton = document.getElementById('playPauseButton');
+                if(bgVid.paused) {
+                  playPauseButton.textContent = 'Play';
+                } else {
+                  playPauseButton.textContent = 'Pause';
+                }
                 document.getElementById('playbackBar').style.display = 'block';
-              } else if(mainImage && mainImage.classList.contains('active')) {
+              } else if(bgImg && bgImg.classList.contains('active')) {
                 previewVideo.style.display = 'none';
                 previewImage.style.display = 'block';
-                if(previewImage.src !== mainImage.src) {
-                  previewImage.src = mainImage.src;
+                if(previewImage.src !== bgImg.src) {
+                  previewImage.src = bgImg.src;
                 }
                 document.getElementById('playbackBar').style.display = 'none';
               } else {
@@ -469,19 +576,64 @@
                 document.getElementById('playbackBar').style.display = 'none';
               }
             }
-            setInterval(updatePreview, 250);
-            document.getElementById('btnPlayPause').addEventListener('click', function() {
-              const mainVideo = window.opener.bgVideo;
-              if(mainVideo.paused) { mainVideo.play(); }
-              else { mainVideo.pause(); }
+            setInterval(updatePreview, 1000);
+            
+            // ============================== //
+            // Control de play/pause para el video de fondo //
+            // ============================== //
+            document.getElementById('playPauseButton').addEventListener('click', function() {
+              var bgVid = window.opener.bgVideo;
+              if(bgVid.paused) {
+                bgVid.play();
+              } else {
+                bgVid.pause();
+              }
             });
           <\/script>
         </body>
         </html>
       `);
-      controlWindow.document.close();
-      controlWindow.focus();
     }
+
+    // ============================== //
+    // Atajos de teclado en la ventana principal //
+    // ============================== //
+    document.addEventListener('keydown', e => {
+      console.log(`Tecla: ${e.key}, Ctrl: ${e.ctrlKey}, Shift: ${e.shiftKey}`);
+      // Ctrl+Shift+L: Ocultar/Revelar Texto
+      if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'l'){
+        e.preventDefault();
+        console.log('Ctrl+Shift+L detectado');
+        toggleLyricsVisibility();
+      }
+      // Ctrl+Shift+X: Alternar la barra de búsqueda (modo control) //
+      if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x'){
+        e.preventDefault();
+        console.log('Ctrl+Shift+X detectado');
+        if(!inPresenterMode) toggleSearchContainer();
+      }
+      // Ctrl+Shift+Y: Abrir el panel de control //
+      if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'y'){
+        e.preventDefault();
+        console.log('Ctrl+Shift+Y detectado: Abrir panel de control');
+        openControlPanel();
+      }
+      // Flecha derecha o espacio: siguiente diapositiva //
+      if(e.key === 'ArrowRight' || e.key === ' '){
+        nextSlide();
+      }
+      // Flecha izquierda: diapositiva anterior //
+      if(e.key === 'ArrowLeft'){
+        previousSlide();
+      }
+      // Otros atajos con Ctrl //
+      if(e.ctrlKey){
+        if(e.key === 'o') document.getElementById('rtfFile').click();
+        if(e.key === 'm') document.getElementById('mediaFile').click();
+        if(e.key === 'c') document.getElementById('colorPicker').click();
+        if(e.key === 'f') toggleFullscreen();
+      }
+    });
   </script>
 </body>
 </html>
