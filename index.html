@@ -5,7 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Presentador sin Autenticación</title>
     <style>
-        /* Estilos Generales (sin cambios) */
+        /* =========================
+            Estilos Generales
+            ========================= */
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
             height: 100vh;
@@ -13,7 +15,9 @@
             background: #000;
             font-family: Arial, sans-serif;
         }
-        /* Contenedor Multimedia (sin cambios) */
+        /* =========================
+            Contenedor Multimedia
+            ========================= */
         #mediaContainer {
             position: fixed;
             top: 0; left: 0;
@@ -29,7 +33,9 @@
             transition: opacity 0.5s ease;
         }
         .media-content.active { opacity: 1; }
-        /* Texto (Lyrics) (sin cambios) */
+        /* =========================
+            Texto (Lyrics)
+            ========================= */
         .lyrics {
             position: fixed;
             top: 50%; left: 50%;
@@ -44,7 +50,9 @@
             line-height: 1.4;
         }
         .lyrics.hidden { opacity: 0 !important; }
-        /* Barra de Búsqueda (para el uso del panel de control) (sin cambios) */
+        /* =========================
+            Barra de Búsqueda (para el uso del panel de control)
+            ========================= */
         #search-container {
             display: none;
             position: fixed;
@@ -97,7 +105,7 @@
 
     <script>
         // =========================
-        // Variables Globales y Referencias (sin cambios)
+        // Variables Globales y Referencias
         // =========================
         let slides = ["Diapositiva 1", "Diapositiva 2", "Diapositiva 3"];
         let currentIndex = 0;
@@ -111,13 +119,13 @@
         const searchResults = document.getElementById('searchResults');
 
         // =========================
-        // Prevención de arrastrar y soltar (sin cambios)
+        // Prevención de arrastrar y soltar
         // =========================
         document.addEventListener('dragover', e => e.preventDefault());
         document.addEventListener('drop', e => e.preventDefault());
 
         // =========================
-        // Funciones de Utilidad (sin cambios)
+        // Funciones de Utilidad
         // =========================
         function decodeRTF(text) {
             return text.replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) =>
@@ -137,7 +145,7 @@
         }
 
         // =========================
-        // Funciones para Cargar Archivos (sin cambios)
+        // Funciones para Cargar Archivos
         // =========================
         function loadTextFile() {
             document.getElementById('rtfFile').click();
@@ -147,7 +155,7 @@
         }
 
         // =========================
-        // Función para Pantalla Completa (sin cambios)
+        // Función para Pantalla Completa
         // =========================
         function toggleFullscreen() {
             if (!document.fullscreenElement) {
@@ -158,7 +166,7 @@
         }
 
         // =========================
-        // Funciones para el Texto (Diapositivas) (sin cambios)
+        // Funciones para el Texto (Diapositivas)
         // =========================
         function fadeTextTransition() {
             lyricsDiv.style.opacity = 0;
@@ -180,7 +188,7 @@
         }
 
         // =========================
-        // Función para Alternar la Barra de Búsqueda (sin cambios)
+        // Función para Alternar la Barra de Búsqueda
         // =========================
         function toggleSearchContainer() {
             if (searchContainer.style.display === 'none' || searchContainer.style.display === '') {
@@ -194,7 +202,7 @@
         }
 
         // =========================
-        // Eventos de Carga de Archivos (sin cambios)
+        // Eventos de Carga de Archivos
         // =========================
         document.getElementById('rtfFile').addEventListener('change', function(e) {
             const file = e.target.files[0];
@@ -231,7 +239,7 @@
         });
 
         // =========================
-        // Lógica de Búsqueda en la Ventana Principal (sin cambios)
+        // Lógica de Búsqueda en la Ventana Principal
         // =========================
         searchInput.addEventListener('input', function() {
             const query = searchInput.value.trim().toLowerCase();
@@ -284,7 +292,7 @@
         });
 
         // =========================
-        // Atajos de Teclado en la Ventana Principal (modificado)
+        // Atajos de Teclado en la Ventana Principal
         // =========================
         document.addEventListener('keydown', function(e) {
             console.log(`Tecla: ${e.key}, Ctrl: ${e.ctrlKey}, Shift: ${e.shiftKey}`);
@@ -315,7 +323,7 @@
         });
 
         // =========================
-        // Función para Abrir el Panel de Control Emergente (modificado)
+        // Función para Abrir el Panel de Control Emergente
         // =========================
         function openControlPanel() {
             const controlWindow = window.open('', 'PanelControl', 'width=500,height=700');
