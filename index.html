@@ -1,464 +1,465 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Presentador sin Autenticación</title>
-  <style>
-    /* =========================
-       Estilos Generales
-       ========================= */
-    * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      height: 100vh;
-      overflow: hidden;
-      background: #000;
-      font-family: Arial, sans-serif;
-    }
-    /* =========================
-       Contenedor Multimedia
-       ========================= */
-    #mediaContainer {
-      position: fixed;
-      top: 0; left: 0;
-      width: 100%; height: 100%;
-      z-index: -1;
-    }
-    .media-content {
-      object-fit: cover;
-      width: 100%; height: 100%;
-      position: absolute;
-      top: 0; left: 0;
-      opacity: 0;
-      transition: opacity 0.5s ease;
-    }
-    .media-content.active { opacity: 1; }
-    /* =========================
-       Texto (Lyrics)
-       ========================= */
-    .lyrics {
-      position: fixed;
-      top: 50%; left: 50%;
-      transform: translate(-50%, -50%);
-      width: 90%;
-      text-align: center;
-      color: #fff;
-      font-size: 3.5vw;
-      text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
-      opacity: 1;
-      transition: opacity 0.5s ease;
-      line-height: 1.4;
-    }
-    .lyrics.hidden { opacity: 0 !important; }
-    /* =========================
-       Barra de Búsqueda (para el uso del panel de control)
-       ========================= */
-    #search-container {
-      display: none;
-      position: fixed;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0,0,0,0.8);
-      padding: 10px;
-      border-radius: 5px;
-      z-index: 300;
-      color: #fff;
-      width: 320px;
-      font-family: Arial, sans-serif;
-    }
-    #search-container input {
-      width: 100%;
-      padding: 5px;
-      font-size: 1em;
-    }
-    #searchResults {
-      max-height: 200px;
-      overflow-y: auto;
-      margin-top: 10px;
-      font-size: 0.9em;
-    }
-    #searchResults div {
-      cursor: pointer;
-      padding: 2px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-    #searchResults div:hover { background: rgba(255,255,255,0.1); }
-  </style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Presentador sin Autenticación</title>
+  <style>
+    /* =========================
+       Estilos Generales
+       ========================= */
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      height: 100vh;
+      overflow: hidden;
+      background: #000;
+      font-family: Arial, sans-serif;
+    }
+    /* =========================
+       Contenedor Multimedia
+       ========================= */
+    #mediaContainer {
+      position: fixed;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      z-index: -1;
+    }
+    .media-content {
+      object-fit: cover;
+      width: 100%; height: 100%;
+      position: absolute;
+      top: 0; left: 0;
+      opacity: 0;
+      transition: opacity 0.5s ease;
+    }
+    .media-content.active { opacity: 1; }
+    /* =========================
+       Texto (Lyrics)
+       ========================= */
+    .lyrics {
+      position: fixed;
+      top: 50%; left: 50%;
+      transform: translate(-50%, -50%);
+      width: 90%;
+      text-align: center;
+      color: #fff;
+      font-size: 3.5vw;
+      text-shadow: 2px 2px 8px rgba(0,0,0,0.9);
+      opacity: 1;
+      transition: opacity 0.5s ease;
+      line-height: 1.4;
+    }
+    .lyrics.hidden { opacity: 0 !important; }
+    /* =========================
+       Barra de Búsqueda (para el uso del panel de control)
+       ========================= */
+    #search-container {
+      display: none;
+      position: fixed;
+      top: 10px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(0,0,0,0.8);
+      padding: 10px;
+      border-radius: 5px;
+      z-index: 300;
+      color: #fff;
+      width: 320px;
+      font-family: Arial, sans-serif;
+    }
+    #search-container input {
+      width: 100%;
+      padding: 5px;
+      font-size: 1em;
+    }
+    #searchResults {
+      max-height: 200px;
+      overflow-y: auto;
+      margin-top: 10px;
+      font-size: 0.9em;
+    }
+    #searchResults div {
+      cursor: pointer;
+      padding: 2px 0;
+      border-bottom: 1px solid rgba(255,255,255,0.1);
+    }
+    #searchResults div:hover { background: rgba(255,255,255,0.1); }
+  </style>
 </head>
 <body>
-  <!-- Inputs para cargar archivos (invisibles pero accesibles) -->
-  <input type="file" id="rtfFile" accept=".rtf, .txt" style="opacity:0; position:absolute; width:1px; height:1px;">
-  <input type="file" id="mediaFile" accept="video/*,image/*" style="opacity:0; position:absolute; width:1px; height:1px;">
-  <input type="color" id="colorPicker" style="opacity:0; position:absolute; width:1px; height:1px;">
+    <input type="file" id="rtfFile" accept=".rtf, .txt" style="opacity:0; position:absolute; width:1px; height:1px;">
+  <input type="file" id="mediaFile" accept="video/*,image/*" style="opacity:0; position:absolute; width:1px; height:1px;">
+  <input type="color" id="colorPicker" style="opacity:0; position:absolute; width:1px; height:1px;">
 
-  <!-- Contenedor Multimedia -->
-  <div id="mediaContainer">
-    <!-- El atributo "muted" evita reproducir audio; quítalo si deseas audio -->
-    <video id="bgVideo" class="media-content" autoplay muted loop></video>
-    <img id="bgImage" class="media-content" alt="Background">
-  </div>
+    <div id="mediaContainer">
+        <video id="bgVideo" class="media-content" autoplay muted loop></video>
+    <img id="bgImage" class="media-content" alt="Background">
+  </div>
 
-  <!-- Texto principal -->
-  <div class="lyrics">Aquí se mostrarán las líneas de texto</div>
+    <div class="lyrics">Aquí se mostrarán las líneas de texto</div>
 
-  <!-- Barra de Búsqueda -->
-  <div id="search-container">
-    <input type="text" id="searchInput" placeholder="Buscar canciones, versículos, media...">
-    <div id="searchResults"></div>
-  </div>
+    <div id="search-container">
+    <input type="text" id="searchInput" placeholder="Buscar canciones, versículos, media...">
+    <div id="searchResults"></div>
+  </div>
 
-  <script>
-    // =========================
-    // Variables Globales y Referencias
-    // =========================
-    let slides = ["Diapositiva 1", "Diapositiva 2", "Diapositiva 3"];
-    let currentIndex = 0;
-    let mediaFiles = []; // Array de objetos: { filename, url, type }
+  <script>
+    // =========================
+    // Variables Globales y Referencias
+    // =========================
+    let slides = ["Diapositiva 1", "Diapositiva 2", "Diapositiva 3"];
+    let currentIndex = 0;
+    let mediaFiles = []; // Array de objetos: { filename, url, type }
 
-    const lyricsDiv = document.querySelector('.lyrics');
-    const bgVideo = document.getElementById('bgVideo');
-    const bgImage = document.getElementById('bgImage');
-    const searchContainer = document.getElementById('search-container');
-    const searchInput = document.getElementById('searchInput');
-    const searchResults = document.getElementById('searchResults');
+    const lyricsDiv = document.querySelector('.lyrics');
+    const bgVideo = document.getElementById('bgVideo');
+    const bgImage = document.getElementById('bgImage');
+    const searchContainer = document.getElementById('search-container');
+    const searchInput = document.getElementById('searchInput');
+    const searchResults = document.getElementById('searchResults');
 
-    // =========================
-    // Prevención de arrastrar y soltar
-    // =========================
-    document.addEventListener('dragover', e => e.preventDefault());
-    document.addEventListener('drop', e => e.preventDefault());
+    // =========================
+    // Prevención de arrastrar y soltar
+    // =========================
+    document.addEventListener('dragover', e => e.preventDefault());
+    document.addEventListener('drop', e => e.preventDefault());
 
-    // =========================
-    // Funciones de Utilidad
-    // =========================
-    function decodeRTF(text) {
-      return text.replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) =>
-        String.fromCharCode(parseInt(hex, 16))
-      );
-    }
-    function parseRTF(content) {
-      content = decodeRTF(content);
-      content = content.replace(/{\\fonttbl[\s\S]*?}/gi, '')
-                       .replace(/{\\\*\\generator[\s\S]*?}/gi, '')
-                       .replace(/{\\colortbl[\s\S]*?}/gi, '')
-                       .replace(/Calibri;/gi, '')
-                       .replace(/\\[a-z]+\d* ?/gi, '')
-                       .replace(/[{}]/g, '')
-                       .replace(/\\par/g, '\n');
-      return content.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    }
+    // =========================
+    // Funciones de Utilidad
+    // =========================
+    function decodeRTF(text) {
+      return text.replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) =>
+        String.fromCharCode(parseInt(hex, 16))
+      );
+    }
+    function parseRTF(content) {
+      content = decodeRTF(content);
+      content = content.replace(/{\\fonttbl[\s\S]*?}/gi, '')
+                       .replace(/{\\\*\\generator[\s\S]*?}/gi, '')
+                       .replace(/{\\colortbl[\s\S]*?}/gi, '')
+                       .replace(/Calibri;/gi, '')
+                       .replace(/\\[a-z]+\d* ?/gi, '')
+                       .replace(/[{}]/g, '')
+                       .replace(/\\par/g, '\n');
+      return content.split('\n').map(line => line.trim()).filter(line => line.length > 0);
+    }
 
-    // =========================
-    // Funciones para Cargar Archivos
-    // =========================
-    function loadTextFile() {
-      document.getElementById('rtfFile').click();
-    }
-    function loadMediaFile() {
-      document.getElementById('mediaFile').click();
-    }
+    // =========================
+    // Funciones para Cargar Archivos
+    // =========================
+    function loadTextFile() {
+      document.getElementById('rtfFile').click();
+    }
+    function loadMediaFile() {
+      document.getElementById('mediaFile').click();
+    }
 
-    // =========================
-    // Función para Pantalla Completa
-    // =========================
-    function toggleFullscreen() {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-      } else {
-        document.exitFullscreen();
-      }
-    }
+    // =========================
+    // Función para Pantalla Completa
+    // =========================
+    function toggleFullscreen() {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen();
+      } else {
+        document.exitFullscreen();
+      }
+    }
 
-    // =========================
-    // Funciones para el Texto (Diapositivas)
-    // =========================
-    function fadeTextTransition() {
-      lyricsDiv.style.opacity = 0;
-      setTimeout(() => {
-        lyricsDiv.textContent = slides[currentIndex] || "";
-        lyricsDiv.style.opacity = 1;
-      }, 500);
-    }
-    function nextSlide() {
-      currentIndex = Math.min(slides.length - 1, currentIndex + 1);
-      fadeTextTransition();
-    }
-    function previousSlide() {
-      currentIndex = Math.max(0, currentIndex - 1);
-      fadeTextTransition();
-    }
-    function toggleLyricsVisibility() {
-      lyricsDiv.classList.toggle('hidden');
-    }
+    // =========================
+    // Funciones para el Texto (Diapositivas)
+    // =========================
+    function fadeTextTransition() {
+      lyricsDiv.style.opacity = 0;
+      setTimeout(() => {
+        lyricsDiv.textContent = slides[currentIndex] || "";
+        lyricsDiv.style.opacity = 1;
+      }, 500);
+    }
+    function nextSlide() {
+      currentIndex = Math.min(slides.length - 1, currentIndex + 1);
+      fadeTextTransition();
+    }
+    function previousSlide() {
+      currentIndex = Math.max(0, currentIndex - 1);
+      fadeTextTransition();
+    }
+    function toggleLyricsVisibility() {
+      lyricsDiv.classList.toggle('hidden');
+    }
 
-    // =========================
-    // Función para Alternar la Barra de Búsqueda
-    // =========================
-    function toggleSearchContainer() {
-      if (searchContainer.style.display === 'none' || searchContainer.style.display === '') {
-        searchContainer.style.display = 'block';
-        searchInput.focus();
-      } else {
-        searchContainer.style.display = 'none';
-        searchInput.value = '';
-        searchResults.innerHTML = '';
-      }
-    }
+    // =========================
+    // Función para Alternar la Barra de Búsqueda
+    // =========================
+    function toggleSearchContainer() {
+      if (searchContainer.style.display === 'none' || searchContainer.style.display === '') {
+        searchContainer.style.display = 'block';
+        searchInput.focus();
+      } else {
+        searchContainer.style.display = 'none';
+        searchInput.value = '';
+        searchResults.innerHTML = '';
+      }
+    }
 
-    // =========================
-    // Eventos de Carga de Archivos
-    // =========================
-    document.getElementById('rtfFile').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.readAsText(file, 'UTF-8');
-      reader.onload = function(e) {
-        try {
-          slides = parseRTF(e.target.result);
-          currentIndex = 0;
-          fadeTextTransition();
-        } catch (error) {
-          alert("Error al procesar el archivo: " + error.message);
-        }
-      };
-    });
-    document.getElementById('mediaFile').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      const url = URL.createObjectURL(file);
-      mediaFiles.push({ filename: file.name, url: url, type: file.type });
-      if (file.type.startsWith('video')) {
-        bgVideo.src = url;
-        bgVideo.classList.add('active');
-        bgImage.classList.remove('active');
-      } else {
-        bgImage.src = url;
-        bgImage.classList.add('active');
-        bgVideo.classList.remove('active');
-      }
-    });
-    document.getElementById('colorPicker').addEventListener('input', function(e) {
-      lyricsDiv.style.color = e.target.value;
-    });
+    // =========================
+    // Eventos de Carga de Archivos
+    // =========================
+    document.getElementById('rtfFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const reader = new FileReader();
+      reader.readAsText(file, 'UTF-8');
+      reader.onload = function(e) {
+        try {
+          slides = parseRTF(e.target.result);
+          currentIndex = 0;
+          fadeTextTransition();
+        } catch (error) {
+          alert("Error al procesar el archivo: " + error.message);
+        }
+      };
+    });
+    document.getElementById('mediaFile').addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+      const url = URL.createObjectURL(file);
+      mediaFiles.push({ filename: file.name, url: url, type: file.type });
+      if (file.type.startsWith('video')) {
+        bgVideo.src = url;
+        bgVideo.classList.add('active');
+        bgImage.classList.remove('active');
+      } else {
+        bgImage.src = url;
+        bgImage.classList.add('active');
+        bgVideo.classList.remove('active');
+      }
+    });
+    document.getElementById('colorPicker').addEventListener('input', function(e) {
+      lyricsDiv.style.color = e.target.value;
+    });
 
-    // =========================
-    // Lógica de Búsqueda en la Ventana Principal
-    // =========================
-    searchInput.addEventListener('input', function() {
-      const query = searchInput.value.trim().toLowerCase();
-      searchResults.innerHTML = '';
-      if (query === "") return;
-      const textResults = slides.filter(s => s.toLowerCase().includes(query));
-      const mediaResults = mediaFiles.filter(m => m.filename.toLowerCase().includes(query));
-      if (textResults.length > 0) {
-        const textHeader = document.createElement('div');
-        textHeader.textContent = "Textos:";
-        textHeader.style.fontWeight = "bold";
-        searchResults.appendChild(textHeader);
-        textResults.forEach(text => {
-          const item = document.createElement('div');
-          item.textContent = text;
-          item.addEventListener('click', () => {
-            lyricsDiv.textContent = text;
-            if (!lyricsDiv.classList.contains('hidden')) {
-              lyricsDiv.classList.add('hidden');
-            }
-            toggleSearchContainer();
-          });
-          searchResults.appendChild(item);
-        });
-      }
-      if (mediaResults.length > 0) {
-        const mediaHeader = document.createElement('div');
-        mediaHeader.textContent = "Media:";
-        mediaHeader.style.fontWeight = "bold";
-        mediaHeader.style.marginTop = "10px";
-        searchResults.appendChild(mediaHeader);
-        mediaResults.forEach(media => {
-          const item = document.createElement('div');
-          item.textContent = media.filename;
-          item.addEventListener('click', () => {
-            if (media.type.startsWith('video')) {
-              bgVideo.src = media.url;
-              bgVideo.classList.add('active');
-              bgImage.classList.remove('active');
-            } else {
-              bgImage.src = media.url;
-              bgImage.classList.add('active');
-              bgVideo.classList.remove('active');
-            }
-            toggleSearchContainer();
-          });
-          searchResults.appendChild(item);
-        });
-      }
-    });
+    // =========================
+    // Lógica de Búsqueda en la Ventana Principal
+    // =========================
+    searchInput.addEventListener('input', function() {
+      const query = searchInput.value.trim().toLowerCase();
+      searchResults.innerHTML = '';
+      if (query === "") return;
+      const textResults = slides.filter(s => s.toLowerCase().includes(query));
+      const mediaResults = mediaFiles.filter(m => m.filename.toLowerCase().includes(query));
+      if (textResults.length > 0) {
+        const textHeader = document.createElement('div');
+        textHeader.textContent = "Textos:";
+        textHeader.style.fontWeight = "bold";
+        searchResults.appendChild(textHeader);
+        textResults.forEach(text => {
+          const item = document.createElement('div');
+          item.textContent = text;
+          item.addEventListener('click', () => {
+            lyricsDiv.textContent = text;
+            if (!lyricsDiv.classList.contains('hidden')) {
+              lyricsDiv.classList.add('hidden');
+            }
+            toggleSearchContainer();
+          });
+          searchResults.appendChild(item);
+        });
+      }
+      if (mediaResults.length > 0) {
+        const mediaHeader = document.createElement('div');
+        mediaHeader.textContent = "Media:";
+        mediaHeader.style.fontWeight = "bold";
+        mediaHeader.style.marginTop = "10px";
+        searchResults.appendChild(mediaHeader);
+        mediaResults.forEach(media => {
+          const item = document.createElement('div');
+          item.textContent = media.filename;
+          item.addEventListener('click', () => {
+            if (media.type.startsWith('video')) {
+              bgVideo.src = media.url;
+              bgVideo.classList.add('active');
+              bgImage.classList.remove('active');
+            } else {
+              bgImage.src = media.url;
+              bgImage.classList.add('active');
+              bgVideo.classList.remove('active');
+            }
+            toggleSearchContainer();
+          });
+          searchResults.appendChild(item);
+        });
+      }
+    });
 
-    // =========================
-    // Atajos de Teclado en la Ventana Principal
-    // =========================
-    document.addEventListener('keydown', function(e) {
-      console.log(`Tecla: ${e.key}, Ctrl: ${e.ctrlKey}, Shift: ${e.shiftKey}`);
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'l') {
-        e.preventDefault();
-        toggleLyricsVisibility();
-      }
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x') {
-        e.preventDefault();
-        toggleSearchContainer();
-      }
-      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'y') {
-        e.preventDefault();
-        openControlPanel();
-      }
-      if (e.key === 'ArrowRight' || e.key === ' ') {
-        nextSlide();
-      }
-      if (e.key === 'ArrowLeft') {
-        previousSlide();
-      }
-      if (e.ctrlKey) {
-        if (e.key === 'o') { loadTextFile(); }
-        if (e.key === 'm') { loadMediaFile(); }
-        if (e.key === 'c') { document.getElementById('colorPicker').click(); }
-        if (e.key === 'f') { toggleFullscreen(); }
-      }
-    });
+    // =========================
+    // Atajos de Teclado en la Ventana Principal
+    // =========================
+    document.addEventListener('keydown', function(e) {
+      console.log(`Tecla: ${e.key}, Ctrl: ${e.ctrlKey}, Shift: ${e.shiftKey}`);
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'l') {
+        e.preventDefault();
+        toggleLyricsVisibility();
+      }
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x') {
+        e.preventDefault();
+        toggleSearchContainer();
+      }
+      if (e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'y') {
+        e.preventDefault();
+        openControlPanel();
+      }
+      if (e.key === 'ArrowRight' || e.key === ' ') {
+        nextSlide();
+      }
+      if (e.key === 'ArrowLeft') {
+        previousSlide();
+      }
+      if (e.ctrlKey) {
+        if (e.key === 'o') { loadTextFile(); }
+        if (e.key === 'm') { loadMediaFile(); }
+        if (e.key === 'c') { document.getElementById('colorPicker').click(); }
+        if (e.key === 'f') { toggleFullscreen(); }
+      }
+    });
 
-    // =========================
-    // Función para Abrir el Panel de Control Emergente
-    // =========================
-    function openControlPanel() {
-      const controlWindow = window.open('', 'PanelControl', 'width=500,height=700');
-      controlWindow.document.open();
-      controlWindow.document.write(`
-        <html>
-        <head>
-          <title>Panel de Control</title>
-          <style>
-            body { font-family: Arial, sans-serif; background: #f2f2f2; padding: 10px; }
-            button { margin: 5px; padding: 10px; font-size: 1em; }
-            input { width: 100%; padding: 5px; font-size: 1em; margin-top: 10px; }
-            #results { margin-top: 10px; }
-            #results div { padding: 2px 0; border-bottom: 1px solid #ccc; cursor: pointer; }
-            #results div:hover { background: #ddd; }
-            #previewContainer { margin-top: 20px; }
-            #previewContainer video, #previewContainer img { width: 100%; max-height: 200px; }
-            #playbackBar { margin-top: 10px; }
-          </style>
-        </head>
-        <body>
-          <h2>Panel de Control</h2>
-          <button onclick="window.opener.previousSlide()">Anterior</button>
-          <button onclick="window.opener.nextSlide()">Siguiente</button>
-          <button onclick="window.opener.toggleLyricsVisibility()">Ocultar/Revelar Texto</button>
-          <button onclick="window.opener.toggleFullscreen()">Pantalla Completa</button>
-          <br>
-          <button onclick="window.opener.loadTextFile()">Cargar Texto (Ctrl+O)</button>
-          <button onclick="window.opener.loadMediaFile()">Cargar Fondo (Ctrl+M)</button>
-          <hr>
-          <input type="text" id="controlSearch" placeholder="Buscar en Presentación...">
-          <div id="results"></div>
-          <hr>
-          <div id="previewContainer">
-            <video id="previewVideo" controls style="display:none;"></video>
-            <img id="previewImage" style="display:none;" alt="Preview">
-          </div>
-          <div id="playbackBar">
-            <button id="playPauseButton">Pause</button>
-          </div>
-          <script>
-            const resultsDiv = document.getElementById('results');
-            const controlSearch = document.getElementById('controlSearch');
-            controlSearch.addEventListener('input', () => {
-              const query = controlSearch.value.trim().toLowerCase();
-              resultsDiv.innerHTML = '';
-              if(query === '') return;
-              const textMatches = window.opener.slides.filter(s => s.toLowerCase().includes(query));
-              const mediaMatches = window.opener.mediaFiles.filter(m => m.filename.toLowerCase().includes(query));
-              if(textMatches.length > 0) {
-                const header = document.createElement('div');
-                header.textContent = "Textos:";
-                header.style.fontWeight = "bold";
-                resultsDiv.appendChild(header);
-                textMatches.forEach(text => {
-                  const item = document.createElement('div');
-                  item.textContent = text;
-                  item.addEventListener('click', () => {
-                    window.opener.lyricsDiv.textContent = text;
-                    if(!window.opener.lyricsDiv.classList.contains('hidden')) {
-                      window.opener.lyricsDiv.classList.add('hidden');
-                    }
-                  });
-                  resultsDiv.appendChild(item);
-                });
-              }
-              if(mediaMatches.length > 0) {
-                const header = document.createElement('div');
-                header.textContent = "Media:";
-                header.style.fontWeight = "bold";
-                header.style.marginTop = "10px";
-                resultsDiv.appendChild(header);
-                mediaMatches.forEach(media => {
-                  const item = document.createElement('div');
-                  item.textContent = media.filename;
-                  item.addEventListener('click', () => {
-                    if(media.type.startsWith('video')) {
-                      window.opener.bgVideo.src = media.url;
-                      window.opener.bgVideo.classList.add('active');
-                      window.opener.bgImage.classList.remove('active');
-                    } else {
-                      window.opener.bgImage.src = media.url;
-                      window.opener.bgImage.classList.add('active');
-                      window.opener.bgVideo.classList.remove('active');
-                    }
-                  });
-                  resultsDiv.appendChild(item);
-                });
-              }
-            });
-            function updatePreview() {
-              const previewVideo = document.getElementById('previewVideo');
-              const previewImage = document.getElementById('previewImage');
-              const mainVideo = window.opener.bgVideo;
-              const mainImage = window.opener.bgImage;
-              if(mainVideo && mainVideo.classList.contains('active')) {
-                previewVideo.style.display = 'block';
-                previewImage.style.display = 'none';
-                if(previewVideo.src !== mainVideo.src) {
-                  previewVideo.src = mainVideo.src;
-                }
-                const playPauseButton = document.getElementById('playPauseButton');
-                playPauseButton.textContent = mainVideo.paused ? 'Play' : 'Pause';
-                document.getElementById('playbackBar').style.display = 'block';
-              } else if(mainImage && mainImage.classList.contains('active')) {
-                previewVideo.style.display = 'none';
-                previewImage.style.display = 'block';
-                if(previewImage.src !== mainImage.src) {
-                  previewImage.src = mainImage.src;
-                }
-                document.getElementById('playbackBar').style.display = 'none';
-              } else {
-                previewVideo.style.display = 'none';
-                previewImage.style.display = 'none';
-                document.getElementById('playbackBar').style.display = 'none';
-              }
-            }
-            setInterval(updatePreview, 250);
-            document.getElementById('playPauseButton').addEventListener('click', function() {
-              const mainVideo = window.opener.bgVideo;
-              if(mainVideo.paused) { mainVideo.play(); }
-              else { mainVideo.pause(); }
-            });
-          <\/script>
-        </body>
-        </html>
-      `);
-      controlWindow.document.close();
-      controlWindow.focus();
-    }
-  </script>
+    // =========================
+    // Función para Abrir el Panel de Control Emergente
+    // =========================
+    function openControlPanel() {
+      const controlWindow = window.open('', 'PanelControl', 'width=500,height=700');
+      controlWindow.document.open();
+      controlWindow.document.write(`
+        <html>
+        <head>
+          <title>Panel de Control</title>
+          <style>
+            body { font-family: Arial, sans-serif; background: #f2f2f2; padding: 10px; }
+            button { margin: 5px; padding: 10px; font-size: 1em; }
+            input { width: 100%; padding: 5px; font-size: 1em; margin-top: 10px; }
+            #results { margin-top: 10px; }
+            #results div { padding: 2px 0; border-bottom: 1px solid #ccc; cursor: pointer; }
+            #results div:hover { background: #ddd; }
+            #previewContainer { margin-top: 20px; }
+            #previewContainer video, #previewContainer img { width: 100%; max-height: 200px; }
+            #playbackBar { margin-top: 10px; }
+          </style>
+        </head>
+        <body>
+          <h2>Panel de Control</h2>
+          <button onclick="window.opener.previousSlide()">Anterior</button>
+          <button onclick="window.opener.nextSlide()">Siguiente</button>
+          <button onclick="window.opener.toggleLyricsVisibility()">Ocultar/Revelar Texto</button>
+          <button onclick="window.opener.toggleFullscreen()">Pantalla Completa</button>
+          <br>
+          <button onclick="window.opener.loadTextFile()">Cargar Texto (Ctrl+O)</button>
+          <button onclick="window.opener.loadMediaFile()">Cargar Fondo (Ctrl+M)</button>
+          <hr>
+          <input type="text" id="controlSearch" placeholder="Buscar en Presentación...">
+          <div id="results"></div>
+          <hr>
+          <div id="previewContainer">
+            <video id="previewVideo" controls style="display:none;"></video>
+            <img id="previewImage" style="display:none;" alt="Preview">
+          </div>
+          <div id="playbackBar">
+            <button id="playPauseButton">Pause</button>
+          </div>
+          <script>
+            // Retrasar la inicialización del script del panel de control
+            setTimeout(function() {
+              const resultsDiv = document.getElementById('results');
+              const controlSearch = document.getElementById('controlSearch');
+
+              controlSearch.addEventListener('input', () => {
+                const query = controlSearch.value.trim().toLowerCase();
+                resultsDiv.innerHTML = '';
+                if(query === '') return;
+                const textMatches = window.opener.slides.filter(s => s.toLowerCase().includes(query));
+                const mediaMatches = window.opener.mediaFiles.filter(m => m.filename.toLowerCase().includes(query));
+                if(textMatches.length > 0) {
+                  const header = document.createElement('div');
+                  header.textContent = "Textos:";
+                  header.style.fontWeight = "bold";
+                  resultsDiv.appendChild(header);
+                  textMatches.forEach(text => {
+                    const item = document.createElement('div');
+                    item.textContent = text;
+                    item.addEventListener('click', () => {
+                      window.opener.lyricsDiv.textContent = text;
+                      if(!window.opener.lyricsDiv.classList.contains('hidden')) {
+                        window.opener.lyricsDiv.classList.add('hidden');
+                      }
+                    });
+                    resultsDiv.appendChild(item);
+                  });
+              }
+              if(mediaMatches.length > 0) {
+                const header = document.createElement('div');
+                header.textContent = "Media:";
+                header.style.fontWeight = "bold";
+                header.style.marginTop = "10px";
+                resultsDiv.appendChild(header);
+                mediaMatches.forEach(media => {
+                  const item = document.createElement('div');
+                  item.textContent = media.filename;
+                  item.addEventListener('click', () => {
+                    if(media.type.startsWith('video')) {
+                      window.opener.bgVideo.src = media.url;
+                      window.opener.bgVideo.classList.add('active');
+                      window.opener.bgImage.classList.remove('active');
+                    } else {
+                      window.opener.bgImage.src = media.url;
+                      window.opener.bgImage.classList.add('active');
+                      window.opener.bgVideo.classList.remove('active');
+                    }
+                  });
+                  resultsDiv.appendChild(item);
+                });
+              }
+            });
+
+            function updatePreview() {
+              const previewVideo = document.getElementById('previewVideo');
+              const previewImage = document.getElementById('previewImage');
+              const mainVideo = window.opener.bgVideo;
+              const mainImage = window.opener.bgImage;
+              if(mainVideo && mainVideo.classList.contains('active')) {
+                previewVideo.style.display = 'block';
+                previewImage.style.display = 'none';
+                if(previewVideo.src !== mainVideo.src) {
+                  previewVideo.src = mainVideo.src;
+                }
+                const playPauseButton = document.getElementById('playPauseButton');
+                playPauseButton.textContent = mainVideo.paused ? 'Play' : 'Pause';
+                document.getElementById('playbackBar').style.display = 'block';
+              } else if(mainImage && mainImage.classList.contains('active')) {
+                previewVideo.style.display = 'none';
+                previewImage.style.display = 'block';
+                if(previewImage.src !== mainImage.src) {
+                  previewImage.src = mainImage.src;
+                }
+                document.getElementById('playbackBar').style.display = 'none';
+              } else {
+                previewVideo.style.display = 'none';
+                previewImage.style.display = 'none';
+                document.getElementById('playbackBar').style.display = 'none';
+              }
+            }
+            setInterval(updatePreview, 250);
+
+            document.getElementById('playPauseButton').addEventListener('click', function() {
+              const mainVideo = window.opener.bgVideo;
+              if(mainVideo.paused) { mainVideo.play(); }
+              else { mainVideo.pause(); }
+            });
+          }, 500); // Retraso de 500ms (medio segundo)
+          <\/script>
+        </body>
+        </html>
+      `);
+      controlWindow.document.close();
+      controlWindow.focus();
+    }
+  </script>
 </body>
 </html>
