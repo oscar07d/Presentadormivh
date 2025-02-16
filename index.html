@@ -1,659 +1,458 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Presentador Profesional</title>
+  <meta charset="UTF-8">
+  <title>Proyección de Letras</title>
+  <!-- Cargamos algunas Google Fonts de ejemplo -->
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@400;700&family=Open+Sans:wght@400;700&family=Oswald:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    /* ==============================
-       Estilos básicos
-       ============================== */
-    * {
+    /* Estilos para la proyección */
+    html, body {
       margin: 0;
       padding: 0;
-      box-sizing: border-box;
-    }
-    body {
-      height: 100vh;
       overflow: hidden;
-      background: #000;
-      font-family: Arial, sans-serif;
+      width: 100%;
+      height: 100%;
+      background-color: #000;
     }
-    #mediaContainer {
+    #background-container {
       position: fixed;
       top: 0;
       left: 0;
       width: 100%;
       height: 100%;
-      z-index: -1;
+      background-size: cover;
+      background-position: center;
+      transition: opacity 1s ease-in-out;
+      z-index: 1;
     }
-    .media-content {
-      object-fit: cover;
+    #lyrics-container {
+      position: relative;
+      z-index: 2;
       width: 100%;
       height: 100%;
-      position: absolute;
-      top: 0;
-      left: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: opacity 0.5s ease-in-out;
+    }
+    /* Clase para ocultar de forma suave */
+    #lyrics-container.hidden {
       opacity: 0;
-      transition: opacity 0.5s ease;
     }
-    .media-content.active {
-      opacity: 1;
-    }
-    .song-info {
-      position: fixed;
-      top: 20px;
-      left: 20px;
-      color: rgba(255, 255, 255, 0.9);
-      text-shadow: 2px 2px 4px rgba(0, 0, 0, 0.8);
-      font-size: 1.5em;
-      padding: 0px 0px; /* Padding modificado a 0px 0px */
-      border-radius: 8px;
-      max-width: 80%;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(5px);
-    }
-    .lyrics {
-      position: fixed;
-      top: 50%;
-      left: 50%;
-      transform: translate(-50%, -50%);
-      width: 90%;
+    #lyrics-text {
+      font-size: 4vw;
+      color: #fff;
       text-align: center;
-      color: #fff;
-      font-size: 4.5vw;
-      text-shadow: 2px 2px 8px rgba(0, 0, 0, 0.9);
-      opacity: 1;
-      transition: opacity 0.5s ease;
-      line-height: 1.4;
-    }
-    .lyrics.hidden {
-      opacity: 0 !important;
-    }
-    /* ==============================
-       Barra de búsqueda (oculta por defecto)
-       ============================== */
-    #search-container {
-      display: none;
-      position: fixed;
-      top: 10px;
-      left: 50%;
-      transform: translateX(-50%);
-      background: rgba(0, 0, 0, 0.8);
-      padding: 10px;
-      border-radius: 5px;
-      z-index: 300;
-      color: #fff;
-      width: 320px;
-      font-family: Arial, sans-serif;
-    }
-    #search-container input {
-      width: 100%;
-      padding: 5px;
-      font-size: 1em;
-    }
-    #searchResults {
-      max-height: 200px;
-      overflow-y: auto;
-      margin-top: 10px;
-      font-size: 0.9em;
-    }
-    #searchResults div {
-      cursor: pointer;
-      padding: 2px 0;
-      border-bottom: 1px solid rgba(255,255,255,0.1);
-    }
-    #searchResults div:hover {
-      background: rgba(255,255,255,0.1);
+      padding: 20px;
+      transition: opacity 0.5s ease-in-out;
+      text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
+      /* Sin contenedor de fondo */
     }
   </style>
 </head>
 <body>
-  <!-- ==============================
-       Inputs ocultos para cargar archivos y color
-       ============================== -->
-  <input type="file" id="rtfFile" accept=".rtf, .txt" hidden />
-  <input type="file" id="mediaFile" accept="video/*,image/*" hidden />
-  <input type="color" id="colorPicker" hidden />
-
-  <div id="mediaContainer">
-    <!-- El atributo "muted" hace que el audio no se reproduzca -->
-    <video id="bgVideo" class="media-content" autoplay muted loop></video>
-    <img id="bgImage" class="media-content" alt="Background" />
-  </div>
-
-  <div class="song-info"></div>
-  <div class="lyrics"></div>
-
-  <!-- ==============================
-       Barra de búsqueda (se activa solo en modo control)
-       ============================== -->
-  <div id="search-container">
-    <input type="text" id="searchInput" placeholder="Buscar canciones, versículos, media..." />
-    <div id="searchResults"></div>
+  <!-- Contenedor del fondo y de la letra -->
+  <div id="background-container"></div>
+  <div id="lyrics-container">
+    <div id="lyrics-text">Carga un archivo RTF de letras...</div>
   </div>
 
   <script>
-    // Modo presentación: Si la URL contiene "presenter=true", se ocultan los controles extras
-    const inPresenterMode = window.location.search.includes('presenter=true');
-    if (inPresenterMode) {
-      document.getElementById('search-container').style.display = 'none';
-    }
+    /**************** Variables Globales ****************/
+    let lyricLines = [];         // Arreglo con las líneas de la letra
+    let currentLineIndex = 0;    // Línea actual mostrada
+    let backgroundElement = null;  // Elemento (video/audio) usado como fondo (si corresponde)
+    let backgroundType = null;   // "image", "video" o "audio"
+    let controlPanelWindow = null; // Referencia al popup del panel de control
 
-    // ==============================
-    // Variables globales
-    // ==============================
-    let slides = [];
-    let currentIndex = 0;
-    let mediaFiles = []; // Almacena archivos de media
-
-    const lyricsDiv = document.querySelector('.lyrics');
-    const songInfoDiv = document.querySelector('.song-info');
-    const bgVideo = document.getElementById('bgVideo');
-    const bgImage = document.getElementById('bgImage');
-
-    const searchContainer = document.getElementById('search-container');
-    const searchInput = document.getElementById('searchInput');
-    const searchResults = document.getElementById('searchResults');
-
-    // ==============================
-    // Prevenir el comportamiento por defecto al arrastrar/soltar archivos
-    // ==============================
-    document.addEventListener('dragover', e => e.preventDefault());
-    document.addEventListener('drop', e => e.preventDefault());
-
-    // ==============================
-    // Función para decodificar secuencias hexadecimales (ejemplo: \'e1 para á)
-    // ==============================
-    function decodeRTF(text) {
-      return text.replace(/\\'([0-9a-fA-F]{2})/g, (match, hex) =>
-        String.fromCharCode(parseInt(hex, 16))
-      );
-    }
-
-    // ==============================
-    // Función para procesar archivos RTF o TXT
-    // ==============================
-    function parseRTF(content) {
-      content = decodeRTF(content);
-      content = content.replace(/{\\fonttbl[\s\S]*?}/gi, '');
-      content = content.replace(/{\\\*\\generator[\s\S]*?}/gi, '');
-      content = content.replace(/{\\colortbl[\s\S]*?}/gi, '');
-      content = content.replace(/Calibri;/gi, '');
-      content = content.replace(/\\[a-z]+\d* ?/gi, '');
-      content = content.replace(/[{}]/g, '');
-      content = content.replace(/\\par/g, '\n');
-      return content.split('\n').map(line => line.trim()).filter(line => line.length > 0);
-    }
-
-    // ==============================
-    // Función para cargar texto desde un archivo (usada por el panel de control)
-    // ==============================
-    function loadTextFromFile(file) {
-      var reader = new FileReader();
-      reader.onload = function(e) {
-        try {
-          slides = parseRTF(e.target.result);
-          currentIndex = 0;
-          fadeTextTransition();
-        } catch (error) {
-          alert("Error: Archivo inválido\n" + error.message);
-        }
-      };
-      reader.readAsText(file, "UTF-8");
-    }
-
-    // ==============================
-    // Función para cargar media desde un archivo (usada por el panel de control)
-    // ==============================
-    function loadMediaFromFile(file) {
-      var url = URL.createObjectURL(file);
-      mediaFiles.push({ filename: file.name, url: url, type: file.type });
-      if (file.type.startsWith("video")) {
-        bgVideo.src = url;
-        bgVideo.classList.add("active");
-        bgImage.classList.remove("active");
-      } else {
-        bgImage.src = url;
-        bgImage.classList.add("active");
-        bgVideo.classList.remove("active");
-      }
-    }
-
-    // ==============================
-    // Eventos para cargar archivos desde los inputs ocultos (funcionalidad original)
-    // ==============================
-    document.getElementById('rtfFile').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      loadTextFromFile(file);
-    });
-    document.getElementById('mediaFile').addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if (!file) return;
-      loadMediaFromFile(file);
-    });
-
-    // ==============================
-    // Cambio de color del texto
-    // ==============================
-    document.getElementById('colorPicker').addEventListener('input', e => {
-      lyricsDiv.style.color = e.target.value;
-    });
-
-    // ==============================
-    // Transición del texto (fade-out, cambio y fade-in)
-    // ==============================
-    function fadeTextTransition() {
-      lyricsDiv.style.opacity = 0;
+    /**************** Funciones de proyección ****************/
+    function updateLyrics() {
+      const lyricsTextElem = document.getElementById('lyrics-text');
+      // Transición suave: se desvanece, se actualiza y reaparece
+      lyricsTextElem.style.opacity = 0;
       setTimeout(() => {
-        lyricsDiv.textContent = slides[currentIndex] || '';
-        lyricsDiv.style.opacity = 1;
+        if (lyricLines.length > 0 && currentLineIndex >= 0 && currentLineIndex < lyricLines.length) {
+          lyricsTextElem.textContent = lyricLines[currentLineIndex];
+        }
+        lyricsTextElem.style.opacity = 1;
       }, 500);
     }
 
-    // ==============================
-    // Control de diapositivas
-    // ==============================
-    function nextSlide() {
-      currentIndex = Math.min(slides.length - 1, currentIndex + 1);
-      fadeTextTransition();
-    }
-    function previousSlide() {
-      currentIndex = Math.max(0, currentIndex - 1);
-      fadeTextTransition();
-    }
-
-    // ==============================
-    // Alternar visibilidad del texto
-    // ==============================
-    function toggleLyricsVisibility() {
-      lyricsDiv.classList.toggle('hidden');
-    }
-
-    // ==============================
-    // Alternar pantalla completa
-    // ==============================
-    function toggleFullscreen() {
-      if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen();
-      } else {
-        document.exitFullscreen();
+    function nextLine() {
+      if (currentLineIndex < lyricLines.length - 1) {
+        currentLineIndex++;
+        updateLyrics();
       }
     }
 
-    // ==============================
-    // Función para alternar la visibilidad de la barra de búsqueda (modo control)
-    // ==============================
-    function toggleSearchContainer() {
-      if (inPresenterMode) return;
-      if (searchContainer.style.display === 'none' || searchContainer.style.display === '') {
-        searchContainer.style.display = 'block';
-        searchInput.focus();
-      } else {
-        searchContainer.style.display = 'none';
-        searchInput.value = '';
-        searchResults.innerHTML = '';
+    function prevLine() {
+      if (currentLineIndex > 0) {
+        currentLineIndex--;
+        updateLyrics();
       }
     }
 
-    // ==============================
-    // Lógica de búsqueda en la pestaña principal
-    // ==============================
-    searchInput.addEventListener('input', function() {
-      const query = searchInput.value.trim().toLowerCase();
-      searchResults.innerHTML = '';
-      if (query === '') return;
-      const textResults = slides.filter(s => s.toLowerCase().includes(query));
-      const mediaResults = mediaFiles.filter(m => m.filename.toLowerCase().includes(query));
-      if (textResults.length > 0) {
-        const textHeader = document.createElement('div');
-        textHeader.textContent = "Textos:";
-        textHeader.style.fontWeight = "bold";
-        searchResults.appendChild(textHeader);
-        textResults.forEach(text => {
-          const item = document.createElement('div');
-          item.textContent = text;
-          item.addEventListener('click', () => {
-            lyricsDiv.textContent = text;
-            if (!lyricsDiv.classList.contains('hidden')) {
-              lyricsDiv.classList.add('hidden');
-            }
-            toggleSearchContainer();
-          });
-          searchResults.appendChild(item);
-        });
-      }
-      if (mediaResults.length > 0) {
-        const mediaHeader = document.createElement('div');
-        mediaHeader.textContent = "Media:";
-        mediaHeader.style.fontWeight = "bold";
-        mediaHeader.style.marginTop = "10px";
-        searchResults.appendChild(mediaHeader);
-        mediaResults.forEach(media => {
-          const item = document.createElement('div');
-          item.textContent = media.filename;
-          item.addEventListener('click', () => {
-            if (media.type.startsWith('video')) {
-              bgVideo.src = media.url;
-              bgVideo.classList.add('active');
-              bgImage.classList.remove('active');
-            } else {
-              bgImage.src = media.url;
-              bgImage.classList.add('active');
-              bgVideo.classList.remove('active');
-            }
-            toggleSearchContainer();
-          });
-          searchResults.appendChild(item);
-        });
-      }
-    });
-
-    // ==============================
-    // Función para abrir un panel de control emergente
-    // ==============================
-    function openControlPanel() {
-      var controlWindow = window.open("about:blank", "PanelControl", "width=500,height=700");
-      if (!controlWindow) {
-        alert("Pop-ups bloqueados. Por favor, habilítalos para abrir el panel de control.");
-        return;
-      }
-      controlWindow.document.write(`
-        <html>
-        <head>
-          <title>Panel de Control</title>
-          <style>
-            /* ==============================
-               Estilos para el Panel de Control
-               ============================== */
-            body {
-              font-family: Arial, sans-serif;
-              background: linear-gradient(135deg, #f2f2f2, #ddd);
-              padding: 20px;
-              color: #333;
-            }
-            h2 {
-              text-align: center;
-              margin-bottom: 20px;
-            }
-            button {
-              margin: 5px;
-              padding: 10px 15px;
-              font-size: 1em;
-              border: none;
-              border-radius: 5px;
-              background-color: #4CAF50;
-              color: white;
-              cursor: pointer;
-              transition: background-color 0.3s;
-            }
-            button:hover {
-              background-color: #45a049;
-            }
-            input[type="text"] {
-              width: 100%;
-              padding: 8px;
-              font-size: 1em;
-              margin-top: 10px;
-              border: 1px solid #ccc;
-              border-radius: 5px;
-            }
-            input[type="range"] {
-              width: 100%;
-              margin-top: 10px;
-            }
-            #results {
-              margin-top: 10px;
-              max-height: 150px;
-              overflow-y: auto;
-              border: 1px solid #ccc;
-              border-radius: 5px;
-              padding: 5px;
-              background: #fff;
-            }
-            #results div {
-              padding: 5px;
-              border-bottom: 1px solid #eee;
-              cursor: pointer;
-            }
-            #results div:hover {
-              background: #f9f9f9;
-            }
-            #previewContainer {
-              margin-top: 20px;
-            }
-            #previewContainer video, #previewContainer img {
-              width: 100%;
-              max-height: 200px;
-              border: 1px solid #ccc;
-              border-radius: 5px;
-            }
-            #playbackBar {
-              margin-top: 10px;
-              text-align: center;
-            }
-            /* ==============================
-               Estilos para los botones de selección de archivo
-               ============================== */
-            .file-label {
-              display: inline-block;
-              background-color: #2196F3;
-              color: white;
-              padding: 8px 12px;
-              margin: 5px;
-              border-radius: 4px;
-              cursor: pointer;
-              transition: background-color 0.3s;
-            }
-            .file-label:hover {
-              background-color: #1976d2;
-            }
-          </style>
-        </head>
-        <body>
-          <h2>Panel de Control</h2>
-          <button onclick="window.opener.previousSlide()">Anterior</button>
-          <button onclick="window.opener.nextSlide()">Siguiente</button>
-          <button onclick="window.opener.toggleLyricsVisibility()">Ocultar/Revelar Texto</button>
-          <button onclick="window.opener.toggleFullscreen()">Pantalla Completa</button>
-          <br>
-          <!-- ==============================
-               Botones de selección de archivo en el panel de control
-               ============================== -->
-          <label for="controlTextFile" class="file-label">Seleccionar Archivo de Texto</label>
-          <input type="file" id="controlTextFile" accept=".rtf, .txt" style="display:none;" />
-          <label for="controlMediaFile" class="file-label">Seleccionar Archivo de Fondo</label>
-          <input type="file" id="controlMediaFile" accept="video/*, image/*" style="display:none;" />
-          <br>
-          <!-- ==============================
-               Control para ajustar el tamaño del texto
-               ============================== -->
-          <label for="textSizeRange">Tamaño del Texto:</label>
-          <input type="range" id="textSizeRange" min="1" max="10" step="0.1" value="3.5">
-          <hr>
-          <input type="text" id="controlSearch" placeholder="Buscar en Presentación..." />
-          <div id="results"></div>
-          <hr>
-          <!-- ==============================
-               Previsualización y barra de reproducción
-               ============================== -->
-          <div id="previewContainer">
-            <video id="previewVideo" controls style="display:none;"></video>
-            <img id="previewImage" style="display:none;" alt="Preview" />
-          </div>
-          <div id="playbackBar">
-            <button id="playPauseButton">Pause</button>
-          </div>
-          <script>
-            // Asignar eventos a los inputs de selección de archivo //
-            document.getElementById('controlTextFile').addEventListener('change', function(){
-              var file = this.files[0];
-              if(file) {
-                window.opener.loadTextFromFile(file);
-              }
-            });
-            document.getElementById('controlMediaFile').addEventListener('change', function(){
-              var file = this.files[0];
-              if(file) {
-                window.opener.loadMediaFromFile(file);
-              }
-            });
-            
-            // ==============================
-            // Funcionalidad de búsqueda en el panel de control
-            // ==============================
-            const resultsDiv = document.getElementById('results');
-            const controlSearch = document.getElementById('controlSearch');
-            controlSearch.addEventListener('input', () => {
-              const query = controlSearch.value.trim().toLowerCase();
-              resultsDiv.innerHTML = '';
-              if(query === '') return;
-              const textMatches = window.opener.slides.filter(s => s.toLowerCase().includes(query));
-              const mediaMatches = window.opener.mediaFiles.filter(m => m.filename.toLowerCase().includes(query));
-              if(textMatches.length > 0) {
-                const header = document.createElement('div');
-                header.textContent = "Textos:";
-                header.style.fontWeight = "bold";
-                resultsDiv.appendChild(header);
-                textMatches.forEach(text => {
-                  const item = document.createElement('div');
-                  item.textContent = text;
-                  item.addEventListener('click', () => {
-                    window.opener.lyricsDiv.textContent = text;
-                    if(!window.opener.lyricsDiv.classList.contains('hidden')) {
-                      window.opener.lyricsDiv.classList.add('hidden');
-                    }
-                  });
-                  resultsDiv.appendChild(item);
-                });
-              }
-              if(mediaMatches.length > 0) {
-                const header = document.createElement('div');
-                header.textContent = "Media:";
-                header.style.fontWeight = "bold";
-                header.style.marginTop = "10px";
-                resultsDiv.appendChild(header);
-                mediaMatches.forEach(media => {
-                  const item = document.createElement('div');
-                  item.textContent = media.filename;
-                  item.addEventListener('click', () => {
-                    if(media.type.startsWith('video')) {
-                      window.opener.bgVideo.src = media.url;
-                      window.opener.bgVideo.classList.add('active');
-                      window.opener.bgImage.classList.remove('active');
-                    } else {
-                      window.opener.bgImage.src = media.url;
-                      window.opener.bgImage.classList.add('active');
-                      window.opener.bgVideo.classList.remove('active');
-                    }
-                  });
-                  resultsDiv.appendChild(item);
-                });
-              }
-            });
-            
-            // ==============================
-            // Actualizar la previsualización y la barra de reproducción en tiempo real
-            // ==============================
-            function updatePreview() {
-              var previewVideo = document.getElementById('previewVideo');
-              var previewImage = document.getElementById('previewImage');
-              var bgVid = window.opener.bgVideo;
-              var bgImg = window.opener.bgImage;
-              if(bgVid && bgVid.classList.contains('active')) {
-                previewVideo.style.display = 'block';
-                previewImage.style.display = 'none';
-                if(previewVideo.src !== bgVid.src) {
-                  previewVideo.src = bgVid.src;
-                }
-                var playPauseButton = document.getElementById('playPauseButton');
-                if(bgVid.paused) {
-                  playPauseButton.textContent = 'Play';
-                } else {
-                  playPauseButton.textContent = 'Pause';
-                }
-                document.getElementById('playbackBar').style.display = 'block';
-              } else if(bgImg && bgImg.classList.contains('active')) {
-                previewVideo.style.display = 'none';
-                previewImage.style.display = 'block';
-                if(previewImage.src !== bgImg.src) {
-                  previewImage.src = bgImg.src;
-                }
-                document.getElementById('playbackBar').style.display = 'none';
-              } else {
-                previewVideo.style.display = 'none';
-                previewImage.style.display = 'none';
-                document.getElementById('playbackBar').style.display = 'none';
-              }
-            }
-            setInterval(updatePreview, 1000);
-            
-            // ==============================
-            // Control de play/pause para el video de fondo
-            // ==============================
-            document.getElementById('playPauseButton').addEventListener('click', function() {
-              var bgVid = window.opener.bgVideo;
-              if(bgVid.paused) {
-                bgVid.play();
-              } else {
-                bgVid.pause();
-              }
-            });
-            
-            // ==============================
-            // Control para ajustar el tamaño del texto
-            // ==============================
-            document.getElementById('textSizeRange').addEventListener('input', function() {
-              var size = this.value;
-              console.log("Nuevo tamaño: " + size + "vw");
-              window.opener.lyricsDiv.style.fontSize = size + "vw";
-            });
-          <\/script>
-        </body>
-        </html>
-      `);
+    // Función modificada para ocultar/revelar con transición
+    function toggleLyrics() {
+      const lyricsContainer = document.getElementById('lyrics-container');
+      lyricsContainer.classList.toggle('hidden');
     }
 
-    // ==============================
-    // Atajos de teclado en la ventana principal
-    // ==============================
-    document.addEventListener('keydown', e => {
-      console.log(`Tecla: ${e.key}, Ctrl: ${e.ctrlKey}, Shift: ${e.shiftKey}`);
-      // Ctrl+Shift+L: Ocultar/Revelar Texto //
-      if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'l'){
+    function playPauseBackground() {
+      if (backgroundElement && (backgroundType === 'video' || backgroundType === 'audio')) {
+        if (backgroundElement.paused) {
+          backgroundElement.play();
+        } else {
+          backgroundElement.pause();
+        }
+      }
+    }
+
+    function muteToggleBackground() {
+      if (backgroundElement && (backgroundType === 'video' || backgroundType === 'audio')) {
+        backgroundElement.muted = !backgroundElement.muted;
+      }
+    }
+
+    /**************** Funciones para cargar archivos ****************/
+    function loadRTFFile(file) {
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        const content = e.target.result;
+        const plainText = parseRTF(content);
+        // Separamos el texto en líneas (filtrando las vacías)
+        lyricLines = plainText.split(/\r?\n/).filter(line => line.trim() !== "");
+        currentLineIndex = 0;
+        updateLyrics();
+      }
+      reader.readAsText(file, 'UTF-8');
+    }
+
+    // Función básica para convertir RTF a texto plano (no es un parser completo)
+    function parseRTF(rtf) {
+      // Convierte secuencias como \'e1 a su carácter correspondiente
+      let text = rtf.replace(/\\'([0-9a-fA-F]{2})/g, function(match, hex) {
+        return String.fromCharCode(parseInt(hex, 16));
+      });
+      // Elimina grupos y palabras de control (de forma muy básica)
+      text = text.replace(/{\\[^}]+}/g, '');
+      text = text.replace(/\\[a-zA-Z]+\d* ?/g, '');
+      text = text.replace(/[{}]/g, '');
+      return text;
+    }
+
+    function loadBackgroundFile(file) {
+      const url = URL.createObjectURL(file);
+      const container = document.getElementById('background-container');
+      // Transición de salida
+      container.style.opacity = 0;
+      setTimeout(() => {
+        container.innerHTML = '';
+        if (file.type.startsWith('image/')) {
+          backgroundType = 'image';
+          backgroundElement = null;
+          container.style.backgroundImage = `url(${url})`;
+          container.style.backgroundSize = 'cover';
+          container.style.backgroundPosition = 'center';
+        } else if (file.type.startsWith('video/')) {
+          backgroundType = 'video';
+          const video = document.createElement('video');
+          video.src = url;
+          video.autoplay = true;
+          video.loop = true;
+          video.muted = false;
+          video.style.width = '100%';
+          video.style.height = '100%';
+          video.style.objectFit = 'cover';
+          container.appendChild(video);
+          backgroundElement = video;
+          container.style.backgroundImage = 'none';
+        } else if (file.type.startsWith('audio/')) {
+          backgroundType = 'audio';
+          const audio = document.createElement('audio');
+          audio.src = url;
+          audio.autoplay = true;
+          audio.loop = true;
+          audio.controls = false;
+          container.style.backgroundColor = '#000';
+          backgroundElement = audio;
+        } else {
+          alert('Tipo de archivo no soportado para el fondo.');
+        }
+        // Transición de entrada
+        container.style.opacity = 1;
+      }, 1000);
+    }
+
+    /**************** Apertura del Panel de Control (Popup) ****************/
+    // Abrir el panel al presionar Ctrl+Shift+Y
+    document.addEventListener('keydown', function(e) {
+      if (e.ctrlKey && e.shiftKey && e.key === 'Y') {
         e.preventDefault();
-        console.log('Ctrl+Shift+L detectado');
-        toggleLyricsVisibility();
-      }
-      // Ctrl+Shift+X: Alternar la barra de búsqueda (modo control) //
-      if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'x'){
-        e.preventDefault();
-        console.log('Ctrl+Shift+X detectado');
-        if(!inPresenterMode) toggleSearchContainer();
-      }
-      // Ctrl+Shift+Y: Abrir el panel de control //
-      if(e.ctrlKey && e.shiftKey && e.key.toLowerCase() === 'y'){
-        e.preventDefault();
-        console.log('Ctrl+Shift+Y detectado: Abrir panel de control');
         openControlPanel();
       }
-      // Flecha derecha o espacio: siguiente diapositiva //
-      if(e.key === 'ArrowRight' || e.key === ' '){
-        nextSlide();
+    });
+
+    function openControlPanel() {
+      if (controlPanelWindow && !controlPanelWindow.closed) {
+        controlPanelWindow.focus();
+        return;
       }
-      // Flecha izquierda: diapositiva anterior //
-      if(e.key === 'ArrowLeft'){
-        previousSlide();
+      controlPanelWindow = window.open('', 'ControlPanel', 'width=450,height=850,resizable=yes');
+      if (!controlPanelWindow) {
+        alert('Bloqueador de pop-ups activo. Por favor, permite pop-ups para este sitio.');
+        return;
       }
-      // Otros atajos con Ctrl //
-      if(e.ctrlKey){
-        if(e.key === 'o') document.getElementById('rtfFile').click();
-        if(e.key === 'm') document.getElementById('mediaFile').click();
-        if(e.key === 'c') document.getElementById('colorPicker').click();
-        if(e.key === 'f') toggleFullscreen();
+      // Se escribe el HTML del panel en el popup con secciones separadas y estilos mejorados
+      controlPanelWindow.document.write(`
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Panel de Control</title>
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@400;700&family=Open+Sans:wght@400;700&family=Oswald:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    body {
+      background: linear-gradient(135deg, #3b3b3b, #1f1f1f);
+      color: #fff;
+      font-family: 'Roboto', sans-serif;
+      margin: 0;
+      padding: 20px;
+      line-height: 1.6;
+    }
+    h1, h2 {
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 30px;
+      font-size: 2em;
+    }
+    .section {
+      margin-bottom: 30px;
+      padding: 10px;
+      border: 1px solid #555;
+      border-radius: 8px;
+    }
+    .section h2 {
+      margin-top: 0;
+      font-size: 1.4em;
+      border-bottom: 1px solid #555;
+      padding-bottom: 5px;
+    }
+    .button-container {
+      display: flex;
+      justify-content: space-around;
+      margin: 15px 0;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    button {
+      padding: 10px 15px;
+      font-size: 1em;
+      border: none;
+      border-radius: 5px;
+      background-color: #5a5a5a;
+      color: #fff;
+      cursor: pointer;
+      transition: background-color 0.3s;
+    }
+    button:hover {
+      background-color: #7a7a7a;
+    }
+    .file-input,
+    .font-select,
+    .font-size-control {
+      text-align: center;
+      margin: 15px 0;
+    }
+    label {
+      font-size: 1em;
+      cursor: pointer;
+    }
+    input[type="file"],
+    select,
+    input[type="range"] {
+      margin-top: 5px;
+      padding: 5px;
+      font-size: 1em;
+      width: 80%;
+      max-width: 300px;
+    }
+    /* Estilos para el slider en Chrome */
+    input[type="range"] {
+      -webkit-appearance: none;
+      background: transparent;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 22px;
+      height: 22px;
+      border-radius: 50%;
+      background: #fff;
+      cursor: pointer;
+      margin-top: -7px;
+    }
+    input[type="range"]::-webkit-slider-runnable-track {
+      width: 100%;
+      height: 8px;
+      background: #5a5a5a;
+      border-radius: 5px;
+    }
+    #preview {
+      margin-top: 20px;
+      padding: 15px;
+      border: 2px solid #555;
+      border-radius: 5px;
+      background-color: #222;
+      min-height: 80px;
+      font-size: 1.2em;
+      line-height: 1.4em;
+      overflow-y: auto;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+  <h1>Panel de Control</h1>
+  
+  <div class="section">
+    <h2>Navegación y Control</h2>
+    <div class="button-container">
+      <button id="prevLineBtn">Anterior</button>
+      <button id="nextLineBtn">Siguiente</button>
+      <button id="toggleLyricsBtn">Ocultar/Revelar Letras</button>
+    </div>
+    <div class="button-container">
+      <button id="playPauseBtn">Play/Pausa Fondo</button>
+      <button id="muteBtn">Mutear/Activar Sonido</button>
+    </div>
+  </div>
+  
+  <div class="section">
+    <h2>Carga de Archivos</h2>
+    <div class="file-input">
+      <label>Cargar archivo RTF de letras:<br>
+        <input type="file" id="rtfInput" accept=".rtf">
+      </label>
+    </div>
+    <div class="file-input">
+      <label>Cargar fondo (imagen, video, audio):<br>
+        <input type="file" id="bgInput" accept="image/*,video/*,audio/*">
+      </label>
+    </div>
+  </div>
+  
+  <div class="section">
+    <h2>Personalización de Texto</h2>
+    <div class="font-select">
+      <label>Seleccionar fuente para las letras:<br>
+        <select id="fontSelect">
+          <option value="'Roboto', sans-serif">Roboto</option>
+          <option value="'Open Sans', sans-serif">Open Sans</option>
+          <option value="'Lato', sans-serif">Lato</option>
+          <option value="'Montserrat', sans-serif">Montserrat</option>
+          <option value="'Oswald', sans-serif">Oswald</option>
+        </select>
+      </label>
+    </div>
+    <div class="font-size-control">
+      <label>Ajustar tamaño del texto:<br>
+        <input type="range" id="fontSizeSlider" min="2" max="10" step="0.1" value="4">
+      </label>
+      <div style="text-align:center;">Tamaño: <span id="fontSizeValue">4vw</span></div>
+    </div>
+  </div>
+  
+  <div class="section">
+    <h2>Previsualización</h2>
+    <div id="preview">No hay previsualización</div>
+  </div>
+  
+  <script>
+    const openerWindow = window.opener;
+    document.getElementById('prevLineBtn').addEventListener('click', () => {
+      if (openerWindow && openerWindow.prevLine) {
+        openerWindow.prevLine();
       }
     });
+    document.getElementById('nextLineBtn').addEventListener('click', () => {
+      if (openerWindow && openerWindow.nextLine) {
+        openerWindow.nextLine();
+      }
+    });
+    document.getElementById('toggleLyricsBtn').addEventListener('click', () => {
+      if (openerWindow && openerWindow.toggleLyrics) {
+        openerWindow.toggleLyrics();
+      }
+    });
+    document.getElementById('playPauseBtn').addEventListener('click', () => {
+      if (openerWindow && openerWindow.playPauseBackground) {
+        openerWindow.playPauseBackground();
+      }
+    });
+    document.getElementById('muteBtn').addEventListener('click', () => {
+      if (openerWindow && openerWindow.muteToggleBackground) {
+        openerWindow.muteToggleBackground();
+      }
+    });
+    document.getElementById('rtfInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file && openerWindow && openerWindow.loadRTFFile) {
+        openerWindow.loadRTFFile(file);
+      }
+    });
+    document.getElementById('bgInput').addEventListener('change', (e) => {
+      const file = e.target.files[0];
+      if (file && openerWindow && openerWindow.loadBackgroundFile) {
+        openerWindow.loadBackgroundFile(file);
+      }
+    });
+    document.getElementById('fontSelect').addEventListener('change', (e) => {
+      const font = e.target.value;
+      if (openerWindow) {
+        const lyricsText = openerWindow.document.getElementById('lyrics-text');
+        if (lyricsText) {
+          lyricsText.style.fontFamily = font;
+        }
+      }
+    });
+    // Evento para la barra deslizante que ajusta el tamaño del texto
+    document.getElementById('fontSizeSlider').addEventListener('input', (e) => {
+      const newSize = e.target.value;
+      if (openerWindow) {
+        const lyricsText = openerWindow.document.getElementById('lyrics-text');
+        if (lyricsText) {
+          lyricsText.style.fontSize = newSize + 'vw';
+        }
+      }
+      document.getElementById('fontSizeValue').textContent = newSize + 'vw';
+    });
+    
+    // Actualiza la previsualización de la letra (solo texto) cada 500ms
+    function updatePreview() {
+      if (openerWindow && !openerWindow.closed) {
+        const previewDiv = document.getElementById('preview');
+        const lyricElem = openerWindow.document.getElementById('lyrics-text');
+        previewDiv.textContent = lyricElem ? lyricElem.textContent : 'No disponible';
+      }
+    }
+    setInterval(updatePreview, 500);
+  <\/script>
+</body>
+</html>
+      `);
+      controlPanelWindow.document.close();
+    }
+
+    /**************** Exponemos las funciones para usarlas desde el panel ****************/
+    window.nextLine = nextLine;
+    window.prevLine = prevLine;
+    window.toggleLyrics = toggleLyrics;
+    window.playPauseBackground = playPauseBackground;
+    window.muteToggleBackground = muteToggleBackground;
+    window.loadRTFFile = loadRTFFile;
+    window.loadBackgroundFile = loadBackgroundFile;
   </script>
 </body>
 </html>
