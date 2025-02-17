@@ -3,10 +3,10 @@
 <head>
   <meta charset="UTF-8">
   <title>Proyección de Letras</title>
-  <!-- Cargamos algunas Google Fonts de ejemplo -->
+  <!-- Google Fonts -->
   <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@400;700&family=Open+Sans:wght@400;700&family=Oswald:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
   <style>
-    /* Estilos para la proyección */
+    /* ESTILOS PARA LA VENTANA PRINCIPAL (PROYECTOR) */
     html, body {
       margin: 0;
       padding: 0;
@@ -23,7 +23,7 @@
       height: 100%;
       background-size: cover;
       background-position: center;
-      transition: opacity 1s ease-in-out;
+      transition: opacity 1.5s ease-in-out;
       z-index: 1;
     }
     #lyrics-container {
@@ -36,10 +36,11 @@
       justify-content: center;
       transition: opacity 0.5s ease-in-out;
     }
-    /* Clase para ocultar de forma suave */
+    /* Clase para ocultar/revelar suavemente */
     #lyrics-container.hidden {
       opacity: 0;
     }
+    /* Texto proyectado: se limita para que no se salga de los márgenes */
     #lyrics-text {
       font-size: 4vw;
       color: #fff;
@@ -47,29 +48,58 @@
       padding: 20px;
       transition: opacity 0.5s ease-in-out;
       text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
-      /* Sin contenedor de fondo */
+      max-width: 90vw;
+      max-height: 90vh;
+      overflow: hidden;
+      box-sizing: border-box;
+    }
+    /* Contenedor para Autoria */
+    #autoria-container {
+      position: fixed;
+      bottom: 20px;
+      left: 20px;
+      background: rgba(0, 0, 0, 0.4);
+      color: #fff;
+      padding: 10px;
+      border-radius: 5px;
+      font-size: 1.3vw;
+      display: none;
+      opacity: 0;
+      transition: opacity 1.5s ease-in-out;
+      z-index: 3;
     }
   </style>
 </head>
 <body>
-  <!-- Contenedor del fondo y de la letra -->
+  <!-- Ventana principal: Proyector -->
   <div id="background-container"></div>
   <div id="lyrics-container">
     <div id="lyrics-text">Carga un archivo RTF de letras...</div>
   </div>
-
+  <!-- Contenedor para Autoria -->
+  <div id="autoria-container"></div>
+  
   <script>
-    /**************** Variables Globales ****************/
-    let lyricLines = [];         // Arreglo con las líneas de la letra
-    let currentLineIndex = 0;    // Línea actual mostrada
-    let backgroundElement = null;  // Elemento (video/audio) usado como fondo (si corresponde)
-    let backgroundType = null;   // "image", "video" o "audio"
-    let controlPanelWindow = null; // Referencia al popup del panel de control
-
-    /**************** Funciones de proyección ****************/
+    /*******************************************
+     *           VARIABLES GLOBALES
+     *******************************************/
+    let lyricLines = [];
+    let currentLineIndex = 0;
+    let backgroundElement = null;
+    let backgroundType = null;
+    // Variable para controlar la visibilidad del fondo
+    let backgroundVisible = true;
+    let controlPanelWindow = null;
+    // Hacemos accesibles estas variables desde el panel
+    window.backgroundElement = backgroundElement;
+    window.backgroundType = backgroundType;
+    window.backgroundVisible = backgroundVisible;
+    
+    /*******************************************
+     *         FUNCIONES DE PROYECCIÓN
+     *******************************************/
     function updateLyrics() {
       const lyricsTextElem = document.getElementById('lyrics-text');
-      // Transición suave: se desvanece, se actualiza y reaparece
       lyricsTextElem.style.opacity = 0;
       setTimeout(() => {
         if (lyricLines.length > 0 && currentLineIndex >= 0 && currentLineIndex < lyricLines.length) {
@@ -78,27 +108,26 @@
         lyricsTextElem.style.opacity = 1;
       }, 500);
     }
-
+    
     function nextLine() {
       if (currentLineIndex < lyricLines.length - 1) {
         currentLineIndex++;
         updateLyrics();
       }
     }
-
+    
     function prevLine() {
       if (currentLineIndex > 0) {
         currentLineIndex--;
         updateLyrics();
       }
     }
-
-    // Función modificada para ocultar/revelar con transición
+    
     function toggleLyrics() {
       const lyricsContainer = document.getElementById('lyrics-container');
       lyricsContainer.classList.toggle('hidden');
     }
-
+    
     function playPauseBackground() {
       if (backgroundElement && (backgroundType === 'video' || backgroundType === 'audio')) {
         if (backgroundElement.paused) {
@@ -108,44 +137,58 @@
         }
       }
     }
-
+    
     function muteToggleBackground() {
       if (backgroundElement && (backgroundType === 'video' || backgroundType === 'audio')) {
         backgroundElement.muted = !backgroundElement.muted;
       }
     }
-
-    /**************** Funciones para cargar archivos ****************/
+    
+    // Función para ocultar/mostrar el fondo con transición sutil
+    function toggleBackgroundVisibility() {
+      const container = document.getElementById('background-container');
+      if (backgroundVisible) {
+        container.style.opacity = '0';
+        setTimeout(() => {
+          container.style.display = 'none';
+        }, 1500);
+        backgroundVisible = false;
+      } else {
+        container.style.display = 'block';
+        void container.offsetWidth;
+        container.style.opacity = '1';
+        backgroundVisible = true;
+      }
+      window.backgroundVisible = backgroundVisible;
+    }
+    window.toggleBackgroundVisibility = toggleBackgroundVisibility;
+    
+    /*******************************************
+     *         FUNCIONES PARA CARGAR ARCHIVOS
+     *******************************************/
     function loadRTFFile(file) {
       const reader = new FileReader();
       reader.onload = function(e) {
         const content = e.target.result;
         const plainText = parseRTF(content);
-        // Separamos el texto en líneas (filtrando las vacías)
         lyricLines = plainText.split(/\r?\n/).filter(line => line.trim() !== "");
         currentLineIndex = 0;
         updateLyrics();
       }
       reader.readAsText(file, 'UTF-8');
     }
-
-    // Función básica para convertir RTF a texto plano (no es un parser completo)
+    
     function parseRTF(rtf) {
-      // Convierte secuencias como \'e1 a su carácter correspondiente
-      let text = rtf.replace(/\\'([0-9a-fA-F]{2})/g, function(match, hex) {
-        return String.fromCharCode(parseInt(hex, 16));
-      });
-      // Elimina grupos y palabras de control (de forma muy básica)
+      let text = rtf.replace(/\\'([0-9a-fA-F]{2})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
       text = text.replace(/{\\[^}]+}/g, '');
       text = text.replace(/\\[a-zA-Z]+\d* ?/g, '');
       text = text.replace(/[{}]/g, '');
       return text;
     }
-
+    
     function loadBackgroundFile(file) {
       const url = URL.createObjectURL(file);
       const container = document.getElementById('background-container');
-      // Transición de salida
       container.style.opacity = 0;
       setTimeout(() => {
         container.innerHTML = '';
@@ -180,31 +223,50 @@
         } else {
           alert('Tipo de archivo no soportado para el fondo.');
         }
-        // Transición de entrada
         container.style.opacity = 1;
-      }, 1000);
+        window.backgroundElement = backgroundElement;
+        window.backgroundType = backgroundType;
+      }, 1500);
     }
-
-    /**************** Apertura del Panel de Control (Popup) ****************/
-    // Abrir el panel al presionar Ctrl+Shift+Y
+    
+    /*******************************************
+     *         FUNCIÓN DE AUTORIA (FADE IN/OUT)
+     *******************************************/
+    function showAutoria(artist, song) {
+      const container = document.getElementById('autoria-container');
+      container.innerHTML = '<strong>' + artist + '</strong><br><strong>' + song + '</strong>';
+      container.style.display = 'block';
+      void container.offsetWidth;
+      container.style.opacity = '1';
+      setTimeout(() => {
+        container.style.opacity = '0';
+        setTimeout(() => {
+          container.style.display = 'none';
+        }, 1500);
+      }, 10000);
+    }
+    window.showAutoria = showAutoria;
+    
+    /*******************************************
+     *   APERTURA DEL PANEL DE CONTROL (POPUP)
+     *******************************************/
     document.addEventListener('keydown', function(e) {
-      if (e.ctrlKey && e.shiftKey && e.key === 'Y') {
+      if (e.ctrlKey && e.shiftKey && e.key.toUpperCase() === 'Y') {
         e.preventDefault();
         openControlPanel();
       }
     });
-
+    
     function openControlPanel() {
       if (controlPanelWindow && !controlPanelWindow.closed) {
         controlPanelWindow.focus();
         return;
       }
-      controlPanelWindow = window.open('', 'ControlPanel', 'width=450,height=850,resizable=yes');
+      controlPanelWindow = window.open('', 'ControlPanel', 'width=450,height=750,resizable=yes');
       if (!controlPanelWindow) {
-        alert('Bloqueador de pop-ups activo. Por favor, permite pop-ups para este sitio.');
+        alert('Bloqueador de pop-ups activo. Permite pop-ups para este sitio.');
         return;
       }
-      // Se escribe el HTML del panel en el popup con secciones separadas y estilos mejorados
       controlPanelWindow.document.write(`
 <!DOCTYPE html>
 <html lang="es">
@@ -221,13 +283,8 @@
       padding: 20px;
       line-height: 1.6;
     }
-    h1, h2 {
-      text-align: center;
-    }
-    h1 {
-      margin-bottom: 30px;
-      font-size: 2em;
-    }
+    h1, h2 { text-align: center; }
+    h1 { margin-bottom: 30px; font-size: 2em; }
     .section {
       margin-bottom: 30px;
       padding: 10px;
@@ -257,29 +314,64 @@
       cursor: pointer;
       transition: background-color 0.3s;
     }
-    button:hover {
-      background-color: #7a7a7a;
-    }
-    .file-input,
-    .font-select,
-    .font-size-control {
+    button:hover { background-color: #7a7a7a; }
+    /* Botones para indicar estado activo */
+    #playPauseBtn.active { background-color: #2ecc71; }
+    #muteBtn.active { background-color: #e74c3c; }
+    #toggleBackgroundBtn.active { background-color: #3498db; }
+    /* Sección Carga de Archivos */
+    .file-input {
       text-align: center;
       margin: 15px 0;
     }
-    label {
-      font-size: 1em;
+    .file-input label {
+      display: inline-block;
+      background-color: #5a5a5a;
+      padding: 10px 20px;
+      border-radius: 5px;
       cursor: pointer;
+      transition: background-color 0.3s, transform 0.2s;
+      font-weight: 500;
     }
-    input[type="file"],
-    select,
-    input[type="range"] {
+    .file-input label:hover {
+      background-color: #7a7a7a;
+      transform: scale(1.05);
+    }
+    .file-input input[type="file"] { display: none; }
+    /* Sección de Personalización de Texto */
+    .font-select,
+    .font-size-control,
+    .font-weight-control {
+      text-align: center;
+      margin: 15px 0;
+    }
+    label { font-size: 1em; cursor: pointer; }
+    select, input[type="range"] {
       margin-top: 5px;
       padding: 5px;
       font-size: 1em;
       width: 80%;
       max-width: 300px;
     }
-    /* Estilos para el slider en Chrome */
+    .font-select select {
+      appearance: none;
+      -webkit-appearance: none;
+      -moz-appearance: none;
+      background-color: #444;
+      border: 1px solid #777;
+      border-radius: 5px;
+      color: #fff;
+      padding: 10px;
+      width: 100%;
+      max-width: 300px;
+      font-size: 1em;
+      background-image: url('data:image/svg+xml;charset=US-ASCII,<svg xmlns="http://www.w3.org/2000/svg" width="14" height="10" viewBox="0 0 14 10"><polygon fill="%23fff" points="7,10 0,0 14,0"/></svg>');
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+      background-size: 10px;
+      cursor: pointer;
+    }
+    /* Slider para Chrome */
     input[type="range"] {
       -webkit-appearance: none;
       background: transparent;
@@ -299,17 +391,79 @@
       background: #5a5a5a;
       border-radius: 5px;
     }
-    #preview {
-      margin-top: 20px;
-      padding: 15px;
-      border: 2px solid #555;
+    /* Sección de Autoria */
+    .autoria-section {
+      text-align: center;
+      margin: 15px 0;
+    }
+    .autoria-section .autoria-inputs {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: center;
+      gap: 10px;
+      margin: 10px 0;
+    }
+    .autoria-section select,
+    .autoria-section input[type="text"] {
+      padding: 8px 12px;
+      font-size: 1em;
+      border: 2px solid #777;
       border-radius: 5px;
       background-color: #222;
-      min-height: 80px;
-      font-size: 1.2em;
-      line-height: 1.4em;
-      overflow-y: auto;
+      color: #fff;
+    }
+    .autoria-section select {
+      width: 100px;
+    }
+    .autoria-section input[type="text"] {
+      width: 200px;
+    }
+    .autoria-section button {
+      padding: 10px 20px;
+      font-size: 1em;
+      border: none;
+      border-radius: 5px;
+      background-color: #5a5a5a;
+      color: #fff;
+      cursor: pointer;
+      transition: background-color 0.3s;
+      margin-top: 10px;
+    }
+    .autoria-section button:hover {
+      background-color: #7a7a7a;
+    }
+    .autoria-size-control {
       text-align: center;
+      margin: 15px 0;
+    }
+    .autoria-size-control label {
+      display: inline-block;
+      font-size: 1em;
+      cursor: pointer;
+    }
+    .autoria-size-control input[type="range"] {
+      margin-top: 5px;
+      padding: 5px;
+      font-size: 1em;
+      width: 80%;
+      max-width: 300px;
+    }
+    /* Pie de página */
+    footer {
+      position: fixed;
+      bottom: 0;
+      left: 0;
+      width: 100%;
+      text-align: center;
+      font-size: 0.9em;
+      padding: 10px 0;
+      background: rgba(0, 0, 0, 0.4);
+      z-index: 1000;
+    }
+    footer img {
+      vertical-align: middle;
+      max-height: 15px;
+      margin-left: 5px;
     }
   </style>
 </head>
@@ -326,20 +480,19 @@
     <div class="button-container">
       <button id="playPauseBtn">Play/Pausa Fondo</button>
       <button id="muteBtn">Mutear/Activar Sonido</button>
+      <button id="toggleBackgroundBtn">Ocultar/Mostrar Fondo</button>
     </div>
   </div>
   
   <div class="section">
     <h2>Carga de Archivos</h2>
     <div class="file-input">
-      <label>Cargar archivo RTF de letras:<br>
-        <input type="file" id="rtfInput" accept=".rtf">
-      </label>
+      <label for="rtfInput">Cargar archivo RTF de letras</label>
+      <input type="file" id="rtfInput" accept=".rtf">
     </div>
     <div class="file-input">
-      <label>Cargar fondo (imagen, video, audio):<br>
-        <input type="file" id="bgInput" accept="image/*,video/*,audio/*">
-      </label>
+      <label for="bgInput">Cargar fondo (imagen, video, audio)</label>
+      <input type="file" id="bgInput" accept="image/*,video/*,audio/*">
     </div>
   </div>
   
@@ -357,95 +510,172 @@
       </label>
     </div>
     <div class="font-size-control">
-      <label>Ajustar tamaño del texto:<br>
+      <label>Ajustar tamaño del texto (vw):<br>
         <input type="range" id="fontSizeSlider" min="2" max="10" step="0.1" value="4">
       </label>
       <div style="text-align:center;">Tamaño: <span id="fontSizeValue">4vw</span></div>
     </div>
+    <div class="font-weight-control">
+      <label>Ajustar negrilla del texto:<br>
+        <input type="range" id="fontWeightSlider" min="100" max="900" step="100" value="400">
+      </label>
+      <div style="text-align:center;">Negrilla: <span id="fontWeightValue">400</span></div>
+    </div>
   </div>
   
-  <div class="section">
-    <h2>Previsualización</h2>
-    <div id="preview">No hay previsualización</div>
+  <div class="section autoria-section">
+    <h2>Autoria</h2>
+    <div class="autoria-inputs">
+      <select id="autoriaTypeSelect">
+        <option value="Autor">Autor</option>
+        <option value="Artista">Artista</option>
+      </select>
+      <input type="text" id="autoriaName" placeholder="Nombre">
+    </div>
+    <div class="autoria-inputs">
+      <select id="obraTypeSelect">
+        <option value="Obra">Obra</option>
+        <option value="Canción">Canción</option>
+      </select>
+      <input type="text" id="obraName" placeholder="Nombre">
+    </div>
+    <button id="showAutoriaBtn">Proyectar Autoria</button>
+    <div class="autoria-size-control">
+      <label>Ajustar tamaño de Autoria (vw):<br>
+        <input type="range" id="autoriaSizeSlider" min="1" max="5" step="0.1" value="1.3">
+      </label>
+      <div style="text-align:center;">Tamaño: <span id="autoriaSizeValue">1.3vw</span></div>
+    </div>
   </div>
+  
+  <footer>
+    Desarrollado por <img src="Logo%20OSCAR%2007D%20Studios%20Horizontal.svg" alt="Logo OSCAR 07D Studios Horizontal">
+  </footer>
   
   <script>
     const openerWindow = window.opener;
+    
+    // --- BOTONES ---
     document.getElementById('prevLineBtn').addEventListener('click', () => {
-      if (openerWindow && openerWindow.prevLine) {
-        openerWindow.prevLine();
-      }
+      openerWindow.prevLine();
     });
     document.getElementById('nextLineBtn').addEventListener('click', () => {
-      if (openerWindow && openerWindow.nextLine) {
-        openerWindow.nextLine();
-      }
+      openerWindow.nextLine();
     });
     document.getElementById('toggleLyricsBtn').addEventListener('click', () => {
-      if (openerWindow && openerWindow.toggleLyrics) {
-        openerWindow.toggleLyrics();
-      }
+      openerWindow.toggleLyrics();
     });
     document.getElementById('playPauseBtn').addEventListener('click', () => {
-      if (openerWindow && openerWindow.playPauseBackground) {
-        openerWindow.playPauseBackground();
-      }
+      openerWindow.playPauseBackground();
+      setTimeout(() => {
+        const btn = document.getElementById('playPauseBtn');
+        if ((openerWindow.backgroundType === 'video' || openerWindow.backgroundType === 'audio') &&
+            openerWindow.backgroundElement && openerWindow.backgroundElement.paused) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      }, 300);
     });
     document.getElementById('muteBtn').addEventListener('click', () => {
-      if (openerWindow && openerWindow.muteToggleBackground) {
-        openerWindow.muteToggleBackground();
-      }
+      openerWindow.muteToggleBackground();
+      setTimeout(() => {
+        const btn = document.getElementById('muteBtn');
+        if ((openerWindow.backgroundType === 'video' || openerWindow.backgroundType === 'audio') &&
+            openerWindow.backgroundElement && openerWindow.backgroundElement.muted) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      }, 300);
     });
+    document.getElementById('toggleBackgroundBtn').addEventListener('click', () => {
+      openerWindow.toggleBackgroundVisibility();
+      setTimeout(() => {
+        const btn = document.getElementById('toggleBackgroundBtn');
+        if (openerWindow.backgroundVisible === false) {
+          btn.classList.add('active');
+        } else {
+          btn.classList.remove('active');
+        }
+      }, 1600);
+    });
+    
+    // --- CARGA DE ARCHIVOS ---
     document.getElementById('rtfInput').addEventListener('change', (e) => {
       const file = e.target.files[0];
-      if (file && openerWindow && openerWindow.loadRTFFile) {
+      if (file) {
         openerWindow.loadRTFFile(file);
       }
     });
     document.getElementById('bgInput').addEventListener('change', (e) => {
       const file = e.target.files[0];
-      if (file && openerWindow && openerWindow.loadBackgroundFile) {
+      if (file) {
         openerWindow.loadBackgroundFile(file);
       }
     });
+    
+    // --- PERSONALIZACIÓN DE TEXTO (Selector único para ambos) ---
     document.getElementById('fontSelect').addEventListener('change', (e) => {
       const font = e.target.value;
-      if (openerWindow) {
-        const lyricsText = openerWindow.document.getElementById('lyrics-text');
-        if (lyricsText) {
-          lyricsText.style.fontFamily = font;
-        }
+      const lyricsText = openerWindow.document.getElementById('lyrics-text');
+      const autoriaContainer = openerWindow.document.getElementById('autoria-container');
+      if (lyricsText) {
+        lyricsText.style.fontFamily = font;
+      }
+      if (autoriaContainer) {
+        autoriaContainer.style.fontFamily = font;
       }
     });
-    // Evento para la barra deslizante que ajusta el tamaño del texto
     document.getElementById('fontSizeSlider').addEventListener('input', (e) => {
       const newSize = e.target.value;
-      if (openerWindow) {
-        const lyricsText = openerWindow.document.getElementById('lyrics-text');
-        if (lyricsText) {
-          lyricsText.style.fontSize = newSize + 'vw';
-        }
+      const lyricsText = openerWindow.document.getElementById('lyrics-text');
+      if (lyricsText) {
+        lyricsText.style.fontSize = newSize + 'vw';
       }
       document.getElementById('fontSizeValue').textContent = newSize + 'vw';
     });
-    
-    // Actualiza la previsualización de la letra (solo texto) cada 500ms
-    function updatePreview() {
-      if (openerWindow && !openerWindow.closed) {
-        const previewDiv = document.getElementById('preview');
-        const lyricElem = openerWindow.document.getElementById('lyrics-text');
-        previewDiv.textContent = lyricElem ? lyricElem.textContent : 'No disponible';
+    document.getElementById('fontWeightSlider').addEventListener('input', (e) => {
+      const newWeight = e.target.value;
+      const lyricsText = openerWindow.document.getElementById('lyrics-text');
+      if (lyricsText) {
+        lyricsText.style.fontWeight = newWeight;
       }
-    }
-    setInterval(updatePreview, 500);
+      document.getElementById('fontWeightValue').textContent = newWeight;
+    });
+    
+    // --- AUTORIA ---
+    document.getElementById('showAutoriaBtn').addEventListener('click', () => {
+      const typeArtist = document.getElementById('autoriaTypeSelect').value;
+      const artistName = document.getElementById('autoriaName').value;
+      const typeSong = document.getElementById('obraTypeSelect').value;
+      const songName = document.getElementById('obraName').value;
+      if (artistName.trim() !== '' || songName.trim() !== '') {
+        const artistText = typeArtist + ": " + artistName;
+        const songText = typeSong + ": " + songName;
+        openerWindow.showAutoria(artistText, songText);
+      }
+    });
+    
+    // --- CONTROL DE TAMAÑO DE AUTORIA ---
+    document.getElementById('autoriaSizeSlider').addEventListener('input', (e) => {
+      const newSize = e.target.value;
+      const autoriaContainer = openerWindow.document.getElementById('autoria-container');
+      if (autoriaContainer) {
+        autoriaContainer.style.fontSize = newSize + 'vw';
+      }
+      document.getElementById('autoriaSizeValue').textContent = newSize + 'vw';
+    });
   <\/script>
 </body>
 </html>
-      `);
+`);
       controlPanelWindow.document.close();
     }
-
-    /**************** Exponemos las funciones para usarlas desde el panel ****************/
+    
+    /*******************************************
+     *       EXPONEMOS FUNCIONES GLOBALES
+     *******************************************/
     window.nextLine = nextLine;
     window.prevLine = prevLine;
     window.toggleLyrics = toggleLyrics;
@@ -453,6 +683,7 @@
     window.muteToggleBackground = muteToggleBackground;
     window.loadRTFFile = loadRTFFile;
     window.loadBackgroundFile = loadBackgroundFile;
+    window.toggleBackgroundVisibility = toggleBackgroundVisibility;
   </script>
 </body>
 </html>
