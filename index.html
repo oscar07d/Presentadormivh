@@ -40,7 +40,7 @@
     #lyrics-container.hidden {
       opacity: 0;
     }
-    /* Texto proyectado */
+    /* Texto proyectado: se limita para que no se salga de los márgenes */
     #lyrics-text {
       font-size: 4vw;
       color: #fff;
@@ -89,7 +89,7 @@
     let backgroundType = null;
     let backgroundVisible = true; // Control de visibilidad del fondo
     let controlPanelWindow = null;
-    // Variables globales para acceder desde el panel
+    // Hacemos accesibles estas variables desde el panel
     window.backgroundElement = backgroundElement;
     window.backgroundType = backgroundType;
     window.backgroundVisible = backgroundVisible;
@@ -133,7 +133,6 @@
           backgroundElement.play();
         } else {
           backgroundElement.pause();
-
         }
       }
     }
@@ -144,7 +143,7 @@
       }
     }
     
-    // Función para ocultar/mostrar el fondo
+    // Función para ocultar/mostrar el fondo con transición sutil
     function toggleBackgroundVisibility() {
       const container = document.getElementById('background-container');
       if (backgroundVisible) {
@@ -203,7 +202,9 @@
           const video = document.createElement('video');
           video.src = url;
           video.autoplay = true;
-          // Reiniciar el video al finalizar para lograr bucle sin usar loop
+          video.preload = "auto";
+          video.playsInline = true;
+          // Reiniciar el video al terminar para lograr bucle sin usar el atributo loop
           video.addEventListener('ended', function() {
             video.currentTime = 0;
             video.play();
@@ -254,7 +255,6 @@
     /*******************************************
      *   APERTURA DEL PANEL DE CONTROL (POPUP)
      *******************************************/
-    // Usamos window.addEventListener para asegurar la captura de la tecla
     window.addEventListener('keydown', function(e) {
       if (e.ctrlKey && e.shiftKey && e.key.toUpperCase() === 'Y') {
         e.preventDefault();
@@ -468,6 +468,8 @@
     footer p {
       margin: 0;
       padding-bottom: 5px; /* Ajusta este valor según prefieras */
+      /* Se agrega margen para separar el contenido del borde */
+      margin-bottom: 10px;
     }
     footer img {
       vertical-align: middle;
