@@ -3,8 +3,12 @@
 <head>
   <meta charset="UTF-8">
   <title>Proyección de Letras</title>
-  <!-- Google Fonts -->
-  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@400;700&family=Open+Sans:wght@400;700&family=Oswald:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <!-- Google Fonts combinados: se incluyen todas las fuentes -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Hurricane&family=Atkinson+Hyperlegible+Next:ital,wght@0,200..800;1,200..800&family=Cabin:ital,wght@0,400..700;1,400..700&family=DynaPuff:wght@400..700&family=Indie+Flower&family=Sour+Gummy:ital,wght@0,100..900;1,100..900&display=swap" rel="stylesheet">
+  <!-- Otras fuentes que ya tenías (opcional si ya están incluidas en el enlace anterior) -->
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@100;200;300;400;500;600;700;800;900&family=Montserrat:wght@100;200;300;400;500;600;700;800;900&family=Open+Sans:wght@300;400;500;600;700;800&family=Oswald:wght@200;300;400;500;700&family=Roboto:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     /* ESTILOS PARA LA VENTANA PRINCIPAL (PROYECTOR) */
     html, body {
@@ -40,13 +44,13 @@
     #lyrics-container.hidden {
       opacity: 0;
     }
-    /* Texto proyectado: se limita para que no se salga de los márgenes */
+    /* Texto proyectado */
     #lyrics-text {
       font-size: 4vw;
       color: #fff;
       text-align: center;
       padding: 20px;
-      transition: opacity 0.5s ease-in-out;
+      transition: opacity 0.5s ease-in-out, font-size 0.5s ease, font-weight 0.5s ease;
       text-shadow: 2px 2px 4px rgba(0,0,0,0.7);
       max-width: 90vw;
       max-height: 90vh;
@@ -58,7 +62,7 @@
       position: fixed;
       bottom: 20px;
       left: 20px;
-      background: rgba(0, 0, 0, 0.4);
+      background: rgba(0, 0, 0, 0.2);
       color: #fff;
       padding: 10px;
       border-radius: 5px;
@@ -87,9 +91,8 @@
     let currentLineIndex = 0;
     let backgroundElement = null;
     let backgroundType = null;
-    let backgroundVisible = true; // Control de visibilidad del fondo
+    let backgroundVisible = true;
     let controlPanelWindow = null;
-    // Hacemos accesibles estas variables desde el panel
     window.backgroundElement = backgroundElement;
     window.backgroundType = backgroundType;
     window.backgroundVisible = backgroundVisible;
@@ -143,7 +146,6 @@
       }
     }
     
-    // Función para ocultar/mostrar el fondo con transición sutil
     function toggleBackgroundVisibility() {
       const container = document.getElementById('background-container');
       if (backgroundVisible) {
@@ -204,11 +206,7 @@
           video.autoplay = true;
           video.preload = "auto";
           video.playsInline = true;
-          // Reiniciar el video al terminar para lograr bucle sin usar el atributo loop
-          video.addEventListener('ended', function() {
-            video.currentTime = 0;
-            video.play();
-          });
+          video.loop = true;
           video.muted = false;
           video.style.width = '100%';
           video.style.height = '100%';
@@ -253,10 +251,10 @@
     window.showAutoria = showAutoria;
     
     /*******************************************
-     *   APERTURA DEL PANEL DE CONTROL (POPUP)
+     *   COMANDO PARA ABRIR PANEL DE CONTROL (Ctrl+Shift+Y)
      *******************************************/
     window.addEventListener('keydown', function(e) {
-      if (e.ctrlKey && e.shiftKey && e.key.toUpperCase() === 'Y') {
+      if (e.ctrlKey && e.shiftKey && (e.key.toUpperCase() === 'Y' || e.code === 'KeyY')) {
         e.preventDefault();
         openControlPanel();
       }
@@ -278,7 +276,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Panel de Control</title>
-  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@400;700&family=Montserrat:wght@400;700&family=Open+Sans:wght@400;700&family=Oswald:wght@400;700&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Lato:wght@100;200;300;400;500;600;700;800;900&family=Montserrat:wght@100;200;300;400;500;600;700;800;900&family=Open+Sans:wght@300;400;500;600;700;800&family=Oswald:wght@200;300;400;500;700&family=Roboto:wght@100;200;300;400;500;600;700;800;900&display=swap" rel="stylesheet">
   <style>
     body {
       background: linear-gradient(135deg, #3b3b3b, #1f1f1f);
@@ -288,8 +286,13 @@
       padding: 20px;
       line-height: 1.6;
     }
-    h1, h2 { text-align: center; }
-    h1 { margin-bottom: 30px; font-size: 2em; }
+    h1, h2 {
+      text-align: center;
+    }
+    h1 {
+      margin-bottom: 30px;
+      font-size: 2em;
+    }
     .section {
       margin-bottom: 30px;
       padding: 10px;
@@ -319,11 +322,19 @@
       cursor: pointer;
       transition: background-color 0.3s;
     }
-    button:hover { background-color: #7a7a7a; }
+    button:hover {
+      background-color: #7a7a7a;
+    }
     /* Botones para indicar estado activo */
-    #playPauseBtn.active { background-color: #2ecc71; }
-    #muteBtn.active { background-color: #e74c3c; }
-    #toggleBackgroundBtn.active { background-color: #3498db; }
+    #playPauseBtn.active {
+      background-color: #2ecc71;
+    }
+    #muteBtn.active {
+      background-color: #e74c3c;
+    }
+    #toggleBackgroundBtn.active {
+      background-color: #3498db;
+    }
     /* Sección Carga de Archivos */
     .file-input {
       text-align: center;
@@ -342,7 +353,9 @@
       background-color: #7a7a7a;
       transform: scale(1.05);
     }
-    .file-input input[type="file"] { display: none; }
+    .file-input input[type="file"] {
+      display: none;
+    }
     /* Sección de Personalización de Texto */
     .font-select,
     .font-size-control,
@@ -350,7 +363,10 @@
       text-align: center;
       margin: 15px 0;
     }
-    label { font-size: 1em; cursor: pointer; }
+    label {
+      font-size: 1em;
+      cursor: pointer;
+    }
     select, input[type="range"] {
       margin-top: 5px;
       padding: 5px;
@@ -461,14 +477,12 @@
       width: 100%;
       text-align: center;
       font-size: 0.9em;
-      padding: 10px 0; /* Espacio arriba y abajo */
+      padding: 10px 0;
       background: rgba(0, 0, 0, 0.4);
       z-index: 1000;
     }
     footer p {
       margin: 0;
-      padding-bottom: 5px; /* Ajusta este valor según prefieras */
-      /* Se agrega margen para separar el contenido del borde */
       margin-bottom: 10px;
     }
     footer img {
@@ -517,6 +531,12 @@
           <option value="'Lato', sans-serif">Lato</option>
           <option value="'Montserrat', sans-serif">Montserrat</option>
           <option value="'Oswald', sans-serif">Oswald</option>
+          <option value="'Hurricane', serif">Hurricane</option>
+          <option value="'Atkinson Hyperlegible Next', serif">Atkinson Hyperlegible Next</option>
+          <option value="'Cabin', serif">Cabin</option>
+          <option value="'DynaPuff', serif">DynaPuff</option>
+          <option value="'Indie Flower', serif">Indie Flower</option>
+          <option value="'Sour Gummy', serif">Sour Gummy</option>
         </select>
       </label>
     </div>
@@ -528,7 +548,7 @@
     </div>
     <div class="font-weight-control">
       <label>Ajustar negrilla del texto:<br>
-        <input type="range" id="fontWeightSlider" min="100" max="900" step="100" value="400">
+        <input type="range" id="fontWeightSlider" min="100" max="900" step="10" value="400">
       </label>
       <div style="text-align:center;">Negrilla: <span id="fontWeightValue">400</span></div>
     </div>
@@ -678,9 +698,7 @@
       document.getElementById('autoriaSizeValue').textContent = newSize + 'vw';
     });
   <\/script>
-</body>
-</html>
-`);
+  `);
       controlPanelWindow.document.close();
     }
     
